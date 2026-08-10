@@ -254,10 +254,15 @@ export function MaterialsPage() {
       )}
 
       <section aria-labelledby="library-heading" className="mt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="library-heading" className="text-lg font-semibold">
-            Your materials
-          </h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h2 id="library-heading" className="text-lg font-semibold">
+              Your materials
+            </h2>
+            {!isLoadingMaterials && materials.length > 0 && (
+              <Badge tone="neutral">{materials.length}</Badge>
+            )}
+          </div>
           {hasSubjects && selectedSubject && (
             <Badge tone="indigo">{selectedSubject.name}</Badge>
           )}
@@ -280,13 +285,13 @@ export function MaterialsPage() {
         ) : materials.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="No materials yet"
-            description="Upload your first PDF or TXT file to get started."
+            title="No study material yet."
+            description="Upload a PDF or TXT file to start learning with AI."
             action={
               <label htmlFor="file-upload" className="cursor-pointer">
                 <Button variant="outline" disabled={isUploading}>
                   <Plus className="h-4 w-4" aria-hidden="true" />
-                  Add Material
+                  Upload Material
                 </Button>
               </label>
             }

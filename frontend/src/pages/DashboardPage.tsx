@@ -41,24 +41,28 @@ function SectionHeading({
 const quickActions = [
   {
     label: 'Upload Material',
+    caption: 'Add a PDF or TXT document',
     icon: FileText,
     to: '/materials',
     tone: 'bg-indigo-50 text-indigo-600',
   },
   {
     label: 'Ask Tutor',
+    caption: 'Chat with your study assistant',
     icon: MessageSquareText,
     to: '/tutor',
     tone: 'bg-emerald-50 text-emerald-600',
   },
   {
     label: 'Generate Quiz',
+    caption: 'Test yourself on a material',
     icon: ListChecks,
     to: '/quizzes',
     tone: 'bg-amber-50 text-amber-600',
   },
   {
     label: 'Create Study Plan',
+    caption: 'Plan your next study days',
     icon: CalendarDays,
     to: '/study-plan',
     tone: 'bg-rose-50 text-rose-600',
@@ -344,16 +348,24 @@ export function DashboardPage() {
       </section>
 
       <section aria-labelledby="quick-actions-heading" className="mt-10">
-        <SectionHeading title="QUICK ACTIONS" />
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <SectionHeading title="Quick actions" subtitle="Pick up where you left off." />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
-              <Button key={action.label} to={action.to} variant="outline" className="w-full">
+              <Button
+                key={action.label}
+                to={action.to}
+                variant="outline"
+                className="w-full justify-start px-4 py-3"
+              >
                 <span className={`rounded-xl p-2 ${action.tone}`} aria-hidden="true">
                   <Icon className="h-5 w-5" />
                 </span>
-                {action.label}
+                <span className="min-w-0 text-left">
+                  <span className="block truncate text-sm font-semibold">{action.label}</span>
+                  <span className="block truncate text-xs text-slate-400">{action.caption}</span>
+                </span>
               </Button>
             );
           })}

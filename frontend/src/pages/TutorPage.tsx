@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bot, FileText, Send, Sparkles, Loader2, AlertCircle, RotateCcw, ListChecks } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
@@ -27,6 +27,12 @@ export function TutorPage() {
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest message in view as the conversation grows.
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, isAsking]);
 
   const loadMaterials = useCallback(async () => {
     try {
@@ -184,7 +190,10 @@ export function TutorPage() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-6">
+          <div
+            aria-live="polite"
+            className="flex-1 overflow-y-auto px-5 py-6"
+          >
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center px-4 text-center">
                 <span className="rounded-2xl bg-indigo-50 p-4 text-indigo-600">
@@ -215,24 +224,30 @@ export function TutorPage() {
                 {messages.map((message, index) =>
                   message.role === 'user' ? (
                     <div key={index} className="flex justify-end">
-                      <p className="max-w-[80%] rounded-2xl rounded-br-md bg-indigo-600 px-4 py-2.5 text-sm text-white">
+                      <div className="max-w-[80%] rounded-2xl rounded-br-md bg-indigo-600 px-4 py-2.5 text-sm text-white">
                         {message.content}
-                      </p>
+                      </div>
                     </div>
                   ) : (
-                    <div key={index} className="flex justify-start">
-                      <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5">
+                    <div key={index} className="flex items-start justify-start gap-2.5">
+                      <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                        <Bot className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-2.5">
                         <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                           ByteBrains Tutor
                         </p>
-                        <p className="mt-1 text-sm text-slate-600 whitespace-pre-wrap">{message.content}</p>
+                        <p className="mt-1 text-sm whitespace-pre-wrap text-slate-600">{message.content}</p>
                       </div>
                     </div>
                   ),
                 )}
                 {isAsking && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 animate-pulse">
+                  <div className="flex items-start justify-start gap-2.5">
+                    <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                      <Bot className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-2.5 animate-pulse">
                       <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                         ByteBrains Tutor
                       </p>
@@ -240,6 +255,7 @@ export function TutorPage() {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             )}
           </div>

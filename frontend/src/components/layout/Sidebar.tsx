@@ -20,7 +20,7 @@ function Brand() {
  * Navigation list. Rendered inside both the desktop sidebar and the
  * mobile drawer, so styling lives in one place.
  */
-export function SidebarContent() {
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <Brand />
@@ -30,6 +30,7 @@ export function SidebarContent() {
           <NavLink
             key={to}
             to={to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
@@ -38,8 +39,15 @@ export function SidebarContent() {
               }`
             }
           >
-            <Icon className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
-            {label}
+            {({ isActive }) => (
+              <>
+                <Icon
+                  className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}
+                  aria-hidden="true"
+                />
+                {label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -13,3 +13,14 @@ body {
   /* Guards against horizontal overflow on small screens. */
   overflow-x: hidden;
 }
+
+/* Accent text selection across the app. */
+::selection {
+  @apply bg-indigo-600 text-white;
+}
+
+/* Subtle, consistent focus ring for native interactive elements. */
+:focus-visible {
+  outline: 2px solid theme(--color-indigo-600);
+  outline-offset: 2px;
+}

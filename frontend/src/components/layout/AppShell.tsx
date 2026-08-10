@@ -55,7 +55,7 @@ export function AppShell() {
             mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <SidebarContent />
+          <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
           <button
             type="button"
             onClick={() => setMobileNavOpen(false)}

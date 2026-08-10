@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { getMaterials } from '../services/materials';
 import { generateQuiz } from '../services/quizzes';
 import { setWeakTopics, setQuizSession } from '../store/weakTopics';
@@ -166,9 +167,14 @@ export function QuizzesPage() {
           <div className="mb-4 flex items-center justify-between">
             <Badge tone="indigo">{currentQuestion.topic}</Badge>
             <span className="text-sm text-slate-500">
-              {currentIndex + 1} / {quiz.length}
+              Question {currentIndex + 1} of {quiz.length}
             </span>
           </div>
+          <ProgressBar
+            value={((currentIndex + 1) / quiz.length) * 100}
+            label={`Question ${currentIndex + 1} of ${quiz.length}`}
+            className="mb-6"
+          />
 
           <h2 className="text-lg font-semibold">{currentQuestion.question}</h2>
 
@@ -339,8 +345,8 @@ export function QuizzesPage() {
       {materials.length === 0 ? (
         <EmptyState
           icon={Sparkles}
-          title="No materials yet"
-          description="Upload study material first, then generate a quiz from it."
+          title="No study material yet."
+          description="Test yourself after studying your material — upload a PDF or TXT first."
           action={
             <Button to="/materials" variant="outline">
               <FileText className="h-4 w-4" aria-hidden="true" />

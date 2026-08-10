@@ -11,6 +11,7 @@ import {
   RefreshCw,
   ListChecks,
   Target,
+  Clock,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -296,10 +297,18 @@ export function StudyPlanPage() {
 
           <div className="space-y-6">
             {plan.days.map((day: StudyPlanDay) => (
-              <Card key={day.day} padded={false}>
+              <Card
+                key={day.day}
+                padded={false}
+                className={day.day === 1 ? 'border-indigo-200 shadow-md ring-1 ring-indigo-100' : ''}
+              >
                 <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3">
                   <CalendarDays className="h-4 w-4 text-indigo-600" aria-hidden="true" />
-                  <h3 className="text-sm font-semibold">DAY {day.day}</h3>
+                  <h3 className="text-sm font-semibold">Day {day.day}</h3>
+                  {day.day === 1 && <Badge tone="indigo">Today</Badge>}
+                  {day.day === 1 && (
+                    <span className="ml-auto text-xs text-slate-400">Start here</span>
+                  )}
                 </div>
                 <ul className="divide-y divide-slate-100">
                   {day.tasks.map((task, index) => {
@@ -308,8 +317,12 @@ export function StudyPlanPage() {
                     const isWeakTopic = weakTopics.some(
                       (topic) => topic.toLowerCase() === task.title.toLowerCase()
                     );
+                    const isFirstTask = day.day === 1 && index === 0;
                     return (
-                      <li key={`${day.day}-${index}`} className="flex items-center gap-4 px-5 py-4">
+                      <li
+                        key={`${day.day}-${index}`}
+                        className={`flex items-center gap-4 px-5 py-4 ${isFirstTask ? 'bg-indigo-50/50' : ''}`}
+                      >
                         <span
                           className={`rounded-xl p-2.5 ${meta.tone}`}
                           aria-hidden="true"
@@ -317,13 +330,15 @@ export function StudyPlanPage() {
                           <TaskIcon className="h-4 w-4" />
                         </span>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm font-medium text-slate-800">{task.title}</p>
                             {isWeakTopic && <Badge tone="rose">Weak Topic</Badge>}
+                            {isFirstTask && <Badge tone="emerald">Up Next</Badge>}
                           </div>
                           <p className="mt-0.5 text-xs text-slate-500">{meta.label}</p>
                         </div>
-                        <span className="text-sm font-semibold text-slate-600">
+                        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-slate-600">
+                          <Clock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
                           {task.duration_minutes} min
                         </span>
                       </li>

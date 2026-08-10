@@ -6,6 +6,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Card } from '../components/ui/Card';
 import { getSubjects, createSubject, updateSubject, deleteSubject } from '../services/subjects';
+import { getMaterials } from '../services/materials';
 import type { Subject, SubjectCreate, SubjectUpdate } from '../types/subject';
 
 function SubjectForm({
@@ -109,11 +110,16 @@ function ConfirmDialog({
   variant?: 'danger' | 'primary';
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+    >
       <Card className="w-full max-w-md">
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-lg font-semibold">{title}</h3>
             <p className="mt-1 text-sm text-slate-500">{description}</p>
           </div>
           <div className="flex justify-end gap-3">
@@ -143,6 +149,7 @@ function ConfirmDialog({
 
 export function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [materialsCountBySubject, setMaterialsCountBySubject] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,8 +159,15 @@ export function SubjectsPage() {
   const loadSubjects = useCallback(async () => {
     try {
       setError(null);
-      const data = await getSubjects();
+      const [data, materials] = await Promise.all([getSubjects(), getMaterials()]);
       setSubjects(data);
+      const counts: Record<string, number> = {};
+      for (const material of materials) {
+        if (material.subject_id) {
+          counts[material.subject_id] = (counts[material.subject_id] ?? 0) + 1;
+        }
+      }
+      setMaterialsCountBySubject(counts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load your subjects');
     } finally {
@@ -164,6 +178,19 @@ export function SubjectsPage() {
   useEffect(() => {
     loadSubjects();
   }, [loadSubjects]);
+
+  // Close the open dialog with the Escape key.
+  useEffect(() => {
+    if (!editingSubject && !deletingSubject) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setEditingSubject(null);
+        setDeletingSubject(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editingSubject, deletingSubject]);
 
   const handleCreate = async (data: SubjectCreate) => {
     setIsSubmitting(true);
@@ -295,15 +322,8 @@ export function SubjectsPage() {
         {subjects.map((subject) => (
           <SubjectCard
             key={subject.id}
-            subject={{
-              id: subject.id,
-              name: subject.name,
-              description: subject.description ?? '',
-              progress: 0,
-              topicCount: 0,
-              lastStudied: 'Never',
-            }}
-            variant="full"
+            subject={subject}
+            materialsCount={materialsCountBySubject[subject.id] ?? 0}
             onEdit={() => openEditDialog(subject)}
             onDelete={() => openDeleteDialog(subject)}
           />
@@ -311,10 +331,15 @@ export function SubjectsPage() {
       </section>
 
       {(editingSubject && !deletingSubject) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="subject-dialog-title"
+        >
           <Card className="w-full max-w-md">
             <div className="space-y-4 p-6">
-              <h3 className="text-lg font-semibold">
+              <h3 id="subject-dialog-title" className="text-lg font-semibold">
                 {editingSubject.id ? 'Edit Subject' : 'Add Subject'}
               </h3>
               <SubjectForm

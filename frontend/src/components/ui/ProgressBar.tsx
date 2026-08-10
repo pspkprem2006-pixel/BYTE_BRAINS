@@ -12,9 +12,11 @@ interface ProgressBarProps {
   /** Color of the filled portion. */
   tone?: ProgressTone
   className?: string
+  /** Accessible label describing what the bar represents. */
+  label?: string
 }
 
-export function ProgressBar({ value, tone = 'indigo', className = '' }: ProgressBarProps) {
+export function ProgressBar({ value, tone = 'indigo', className = '', label = 'Progress' }: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, value))
 
   return (
@@ -23,7 +25,7 @@ export function ProgressBar({ value, tone = 'indigo', className = '' }: Progress
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label="Progress"
+      aria-label={label}
       className={`h-2 w-full overflow-hidden rounded-full bg-slate-100 ${className}`}
     >
       <div
