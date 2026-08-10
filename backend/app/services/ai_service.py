@@ -1,18 +1,21 @@
-"""AI Tutor service with OpenRouter integration and lightweight retrieval."""
+"""AI Tutor and Quiz service with OpenRouter integration and lightweight retrieval."""
 
+import json
 import os
 import re
-from typing import List, Tuple
+from typing import List
 
 import httpx
 
 from app.core.config import settings
 from app.models import Material
+from app.schemas.quiz import QuizGenerateResponse, QuizQuestion
 
 
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT = 30.0
+QUIZ_RETRY_ATTEMPTS = 2
 
 # Retrieval configuration
 MAX_CHUNK_CHARS = 2000
@@ -38,6 +41,10 @@ class EmptyMaterialError(TutorError):
 
 class AIServiceError(TutorError):
     """Raised when AI service fails."""
+
+
+class QuizGenerationError(TutorError):
+    """Raised when the AI returns unusable quiz output."""
 
 
 def _split_into_chunks(text: str) -> List[str]:
@@ -174,3 +181,148 @@ async def ask_tutor(
         return answer.strip()
     except (KeyError, IndexError, ValueError) as e:
         raise AIServiceError(f"Invalid AI response: {e}")
+
+
+QUIZ_SYSTEM_PROMPT = """You are ByteBrains quiz generator.
+
+Create multiple-choice questions based ONLY on the provided study material.
+
+Each question must follow this exact JSON structure:
+
+{"question": "text", "options": ["a", "b", "c", "d"], "correct_answer": 0, "explanation": "why", "topic": "topic-name"}
+
+Rules:
+- correct_answer is the 0-based index of the correct option.
+- options must contain exactly 4 items.
+- Generate exactly the requested number of questions.
+- Use ONLY facts supported by the provided material.
+- If the material does not contain enough information, do not invent questions from unrelated knowledge.
+- Return ONLY valid JSON: {"questions": [...]} with no extra text."""
+
+
+def _extract_json(text: str) -> object:
+    """Extract a JSON object from the model output, tolerating code fences and prose."""
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    # Fall back to the first JSON object embedded anywhere in the text.
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidate = cleaned[start : end + 1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+    raise QuizGenerationError("Quiz generation failed: invalid JSON")
+
+
+def _parse_questions(data: object) -> list[QuizQuestion]:
+    """Validate the model output and return structured questions."""
+    if not isinstance(data, dict) or not isinstance(data.get("questions"), list):
+        raise QuizGenerationError("Quiz generation failed: unexpected response structure")
+
+    questions = []
+    for item in data["questions"]:
+        if not isinstance(item, dict):
+            raise QuizGenerationError("Quiz generation failed: malformed question")
+        try:
+            question = QuizQuestion(
+                question=str(item["question"]),
+                options=list(item["options"]),
+                correct_answer=int(item["correct_answer"]),
+                explanation=str(item["explanation"]),
+                topic=str(item["topic"]),
+            )
+        except (KeyError, TypeError, ValueError) as e:
+            raise QuizGenerationError("Quiz generation failed: malformed question") from e
+        if len(question.options) != 4:
+            raise QuizGenerationError("Quiz generation failed: options must be exactly 4")
+        if not (0 <= question.correct_answer <= 3):
+            raise QuizGenerationError("Quiz generation failed: invalid correct_answer")
+        questions.append(question)
+    return questions
+
+
+async def generate_quiz(
+    material: Material,
+    question_count: int,
+) -> QuizGenerateResponse:
+    """Generate a quiz from the material using OpenRouter."""
+    if not settings.openrouter_api_key:
+        raise MissingAPIKeyError("OpenRouter API key not configured.")
+
+    if not material.extracted_text or not material.extracted_text.strip():
+        raise EmptyMaterialError("Material has no extracted text.")
+
+    context = _retrieve_relevant_chunks(material.extracted_text, "key concepts summary")
+
+    messages = [
+        {"role": "system", "content": QUIZ_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                f"Study material:\n\n{context}\n\n"
+                f"Generate exactly {question_count} multiple-choice questions as JSON."
+            ),
+        },
+    ]
+
+    headers = {
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": settings.openrouter_model,
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 3000,
+    }
+
+    last_error: Exception | None = None
+    for attempt in range(QUIZ_RETRY_ATTEMPTS):
+        try:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                response = await client.post(
+                    f"{OPENROUTER_BASE_URL}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+        except httpx.TimeoutException:
+            raise AIServiceError("Quiz generation request timed out.")
+        except httpx.RequestError as e:
+            raise AIServiceError(f"Quiz generation request failed: {e}")
+
+        if response.status_code != 200:
+            raise AIServiceError(f"Quiz generation error: {response.status_code}")
+
+        try:
+            content = response.json()["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, ValueError) as e:
+            raise AIServiceError("Invalid AI response") from e
+
+        try:
+            data = _extract_json(content)
+            questions = _parse_questions(data)
+        except QuizGenerationError as e:
+            last_error = e
+            continue
+
+        if not questions:
+            last_error = QuizGenerationError("Quiz generation failed: no questions returned")
+            continue
+
+        return QuizGenerateResponse(
+            material_id=material.id,
+            questions=questions,
+            question_count=len(questions),
+        )
+
+    assert last_error is not None
+    raise last_error

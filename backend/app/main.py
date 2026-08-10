@@ -7,7 +7,7 @@ Run locally with:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, subjects, topics, materials, tutor
+from app.api.routes import health, subjects, topics, materials, tutor, quizzes
 from app.core.config import settings
 
 app = FastAPI(
@@ -29,6 +29,7 @@ app.include_router(subjects.router)
 app.include_router(topics.router)
 app.include_router(materials.router)
 app.include_router(tutor.router)
+app.include_router(quizzes.router)
 
 
 @app.get("/")
