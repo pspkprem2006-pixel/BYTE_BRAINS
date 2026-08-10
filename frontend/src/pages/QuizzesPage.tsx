@@ -16,6 +16,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { getMaterials } from '../services/materials';
 import { generateQuiz } from '../services/quizzes';
+import { setWeakTopics } from '../store/weakTopics';
 import type { Material } from '../types/material';
 import type { QuizQuestion } from '../types/quiz';
 
@@ -110,6 +111,11 @@ export function QuizzesPage() {
         ]
       : [];
 
+  const handleSubmitQuiz = () => {
+    setSubmitted(true);
+    setWeakTopics(weakTopics);
+  };
+
   const strongTopics =
     submitted && quiz
       ? [
@@ -192,7 +198,7 @@ export function QuizzesPage() {
               Previous
             </Button>
             {isLast ? (
-              <Button onClick={() => setSubmitted(true)} disabled={!allAnswered}>
+              <Button onClick={handleSubmitQuiz} disabled={!allAnswered}>
                 Submit Quiz
               </Button>
             ) : (
@@ -258,8 +264,12 @@ export function QuizzesPage() {
             </div>
           </div>
 
-          <div className="mt-8 flex justify-center">
-            <Button onClick={handleTryAgain}>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button to="/study-plan">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Create Study Plan
+            </Button>
+            <Button variant="outline" onClick={handleTryAgain}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               Try Again
             </Button>

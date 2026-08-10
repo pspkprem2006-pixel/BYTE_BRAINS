@@ -1,8 +1,9 @@
-"""AI Tutor and Quiz service with OpenRouter integration and lightweight retrieval."""
+"""AI Tutor, Quiz, and Study Plan service with OpenRouter integration."""
 
 import json
 import os
 import re
+import uuid
 from typing import List
 
 import httpx
@@ -10,12 +11,19 @@ import httpx
 from app.core.config import settings
 from app.models import Material
 from app.schemas.quiz import QuizGenerateResponse, QuizQuestion
+from app.schemas.study_plan import (
+    PlanTaskType,
+    StudyPlanDay,
+    StudyPlanGenerateResponse,
+    StudyPlanTask,
+)
 
 
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT = 30.0
 QUIZ_RETRY_ATTEMPTS = 2
+PLAN_RETRY_ATTEMPTS = 2
 
 # Retrieval configuration
 MAX_CHUNK_CHARS = 2000
@@ -45,6 +53,10 @@ class AIServiceError(TutorError):
 
 class QuizGenerationError(TutorError):
     """Raised when the AI returns unusable quiz output."""
+
+
+class StudyPlanGenerationError(TutorError):
+    """Raised when the AI returns an unusable study plan."""
 
 
 def _split_into_chunks(text: str) -> List[str]:
@@ -322,6 +334,191 @@ async def generate_quiz(
             material_id=material.id,
             questions=questions,
             question_count=len(questions),
+        )
+
+    assert last_error is not None
+    raise last_error
+
+
+STUDY_PLAN_SYSTEM_PROMPT = """You are ByteBrains AI Study Planner.
+
+Create a realistic study plan using the provided subject information,
+available study time, weak topics, and learning material context.
+
+Prioritize weak topics when requested.
+
+Do not invent topics that are unrelated to the provided material.
+
+Make the plan achievable within the available time.
+
+Balance learning, revision, and practice.
+
+Return structured JSON only.
+
+Each day must follow this exact JSON structure:
+
+{"day": 1, "tasks": [{"title": "text", "duration_minutes": 45, "type": "study"}]}
+
+Task "type" must be one of: study, practice, revision, quiz.
+
+Rules:
+- Generate exactly the requested number of days (day numbers start at 1).
+- Every day must contain at least one task.
+- Each task has a title, duration_minutes (positive integer), and a valid type.
+- Do not exceed the available study time per day.
+- Prioritize weak topics when they are provided.
+- Use ONLY topics supported by the provided material.
+- Return ONLY valid JSON: {"days": [...]} with no extra text."""
+
+
+def _extract_plan_json(text: str) -> object:
+    """Extract a JSON object from the model output, tolerating code fences and prose."""
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidate = cleaned[start : end + 1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+    raise StudyPlanGenerationError("Study plan generation failed: invalid JSON")
+
+
+def _parse_plan(data: object, expected_days: int) -> list[StudyPlanDay]:
+    """Validate the model output and return structured plan days."""
+    if not isinstance(data, dict) or not isinstance(data.get("days"), list):
+        raise StudyPlanGenerationError(
+            "Study plan generation failed: unexpected response structure"
+        )
+
+    days = []
+    for item in data["days"]:
+        if not isinstance(item, dict):
+            raise StudyPlanGenerationError("Study plan generation failed: malformed day")
+        try:
+            day_number = int(item["day"])
+            raw_tasks = item["tasks"]
+        except (KeyError, TypeError, ValueError) as e:
+            raise StudyPlanGenerationError("Study plan generation failed: malformed day") from e
+
+        if not isinstance(raw_tasks, list) or len(raw_tasks) < 1:
+            raise StudyPlanGenerationError("Study plan generation failed: day has no tasks")
+
+        tasks = []
+        for raw in raw_tasks:
+            if not isinstance(raw, dict):
+                raise StudyPlanGenerationError("Study plan generation failed: malformed task")
+            try:
+                task = StudyPlanTask(
+                    title=str(raw["title"]),
+                    duration_minutes=int(raw["duration_minutes"]),
+                    type=PlanTaskType(str(raw["type"])),
+                )
+            except (KeyError, TypeError, ValueError) as e:
+                raise StudyPlanGenerationError("Study plan generation failed: malformed task") from e
+            tasks.append(task)
+
+        days.append(StudyPlanDay(day=day_number, tasks=tasks))
+
+    if len(days) != expected_days:
+        raise StudyPlanGenerationError(
+            f"Study plan generation failed: expected {expected_days} days, got {len(days)}"
+        )
+
+    return days
+
+
+async def generate_study_plan(
+    subject_id: uuid.UUID,
+    subject_name: str,
+    material_context: str,
+    days_available: int,
+    hours_per_day: float,
+    focus: str,
+    exam_date: object | None,
+    weak_topics: List[str],
+) -> StudyPlanGenerateResponse:
+    """Generate a personalized study plan using OpenRouter."""
+    if not settings.openrouter_api_key:
+        raise MissingAPIKeyError("OpenRouter API key not configured.")
+
+    plan_details = (
+        f"Subject: {subject_name}\n"
+        f"Days available: {days_available}\n"
+        f"Hours per day: {hours_per_day}\n"
+        f"Focus: {focus}"
+    )
+    if exam_date is not None:
+        plan_details += f"\nExam date: {exam_date}"
+    if weak_topics:
+        plan_details += f"\nWeak topics to prioritize: {', '.join(weak_topics)}"
+
+    material_section = material_context if material_context else "No learning material provided."
+
+    messages = [
+        {"role": "system", "content": STUDY_PLAN_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                f"Study plan details:\n\n{plan_details}\n\n"
+                f"Learning material context:\n\n{material_section}\n\n"
+                f"Generate exactly {days_available} days of study tasks as JSON."
+            ),
+        },
+    ]
+
+    headers = {
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": settings.openrouter_model,
+        "messages": messages,
+        "temperature": 0.4,
+        "max_tokens": 3000,
+    }
+
+    last_error: Exception | None = None
+    for attempt in range(PLAN_RETRY_ATTEMPTS):
+        try:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                response = await client.post(
+                    f"{OPENROUTER_BASE_URL}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+        except httpx.TimeoutException:
+            raise AIServiceError("Study plan request timed out.")
+        except httpx.RequestError as e:
+            raise AIServiceError(f"Study plan request failed: {e}")
+
+        if response.status_code != 200:
+            raise AIServiceError(f"Study plan error: {response.status_code}")
+
+        try:
+            content = response.json()["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, ValueError) as e:
+            raise AIServiceError("Invalid AI response") from e
+
+        try:
+            data = _extract_plan_json(content)
+            days = _parse_plan(data, days_available)
+        except StudyPlanGenerationError as e:
+            last_error = e
+            continue
+
+        return StudyPlanGenerateResponse(
+            subject_id=subject_id,
+            days=days,
         )
 
     assert last_error is not None
