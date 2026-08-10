@@ -10,6 +10,9 @@ env/
 .env.*
 !.env.example
 
+# Uploads
+uploads/
+
 # Tests / tools
 .pytest_cache/
 .mypy_cache/
