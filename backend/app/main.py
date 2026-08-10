@@ -6,7 +6,7 @@ Run locally with:
 
 from fastapi import FastAPI
 
-from app.api.routes import health, subjects
+from app.api.routes import health, subjects, topics
 from app.core.config import settings
 
 app = FastAPI(
@@ -17,6 +17,7 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(subjects.router)
+app.include_router(topics.router)
 
 
 @app.get("/")
