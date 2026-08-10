@@ -16,7 +16,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { getMaterials } from '../services/materials';
 import { generateQuiz } from '../services/quizzes';
-import { setWeakTopics } from '../store/weakTopics';
+import { setWeakTopics, setQuizSession } from '../store/weakTopics';
 import type { Material } from '../types/material';
 import type { QuizQuestion } from '../types/quiz';
 
@@ -113,6 +113,7 @@ export function QuizzesPage() {
 
   const handleSubmitQuiz = () => {
     setSubmitted(true);
+    setQuizSession(score, quiz ? quiz.length : 0, weakTopics);
     setWeakTopics(weakTopics);
   };
 

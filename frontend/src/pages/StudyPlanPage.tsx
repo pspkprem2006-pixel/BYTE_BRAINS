@@ -18,6 +18,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { getSubjects } from '../services/subjects';
 import { generateStudyPlan } from '../services/studyPlan';
 import { getWeakTopics } from '../store/weakTopics';
+import { setStudyPlan } from '../store/studyPlan';
 import type { Subject } from '../types/subject';
 import type {
   StudyFocus,
@@ -85,6 +86,7 @@ export function StudyPlanPage() {
         weak_topics: weakTopics,
       });
       setPlan(response);
+      setStudyPlan(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate study plan');
     } finally {
@@ -94,6 +96,7 @@ export function StudyPlanPage() {
 
   const handleRegenerate = () => {
     setPlan(null);
+    setStudyPlan(null);
     handleGenerate();
   };
 
