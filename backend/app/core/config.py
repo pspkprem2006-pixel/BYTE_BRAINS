@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "google/gemini-2.5-flash"
 
+    # Allowed CORS origins, comma-separated (e.g. the Vercel frontend URL).
+    # Local development defaults to the Vite dev server.
+    cors_origins: str = "http://localhost:5173"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

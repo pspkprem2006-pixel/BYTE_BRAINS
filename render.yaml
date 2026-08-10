@@ -1,0 +1,29 @@
+# Render blueprint for ByteBrains (see README "Deployment" section).
+# No secrets are stored here: OPENROUTER_API_KEY is set manually in the
+# Render dashboard (sync: false). DATABASE_URL is injected by Render from
+# the managed PostgreSQL instance below.
+services:
+  - type: web
+    name: bytebrains-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bytebrains-db
+          property: connectionString
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+databases:
+  - name: bytebrains-db
+    plan: free
+    databaseName: bytebrains

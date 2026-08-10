@@ -2,12 +2,16 @@ fastapi
 uvicorn[standard]
 pydantic
 pydantic-settings
+python-multipart
+httpx
 
 # Database
 sqlalchemy
 psycopg[binary]
 alembic
 
+# File uploads
+pypdf
+
 # Testing
 pytest
-httpx
