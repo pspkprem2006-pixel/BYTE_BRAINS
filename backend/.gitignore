@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Environment files (never commit real secrets)
+.env
+.env.*
+!.env.example
+
+# Tests / tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Logs
+*.log
+
+# IDE / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
