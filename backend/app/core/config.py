@@ -14,9 +14,12 @@ class Settings(BaseSettings):
     app_name: str = "ByteBrains API"
     app_version: str = "0.1.0"
 
-    # PostgreSQL connection string. Kept empty during Phase 1;
-    # it will be configured in the database phase.
+    # PostgreSQL connection string.
     database_url: str = ""
+
+    # OpenRouter AI Tutor settings.
+    openrouter_api_key: str = ""
+    openrouter_model: str = "google/gemini-2.5-flash"
 
     model_config = SettingsConfigDict(
         env_file=".env",

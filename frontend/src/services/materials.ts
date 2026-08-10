@@ -36,3 +36,7 @@ export async function listMaterials(subjectId?: string): Promise<Material[]> {
     : MATERIALS_PATH;
   return api.get<Material[]>(url);
 }
+
+export async function getMaterials(): Promise<Material[]> {
+  return api.get<Material[]>(MATERIALS_PATH);
+}
