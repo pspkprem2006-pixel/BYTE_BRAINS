@@ -5,6 +5,7 @@ Never hardcode secrets: put real values in a local ".env" file
 (see ".env.example") and keep that file out of version control.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,24 @@ class Settings(BaseSettings):
 
     # PostgreSQL connection string.
     database_url: str = ""
+
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        """Force the psycopg 3 dialect for any PostgreSQL URL.
+
+        Hosts like Render supply postgres://, postgresql://, or
+        postgresql+psycopg2:// URLs, which SQLAlchemy maps to the psycopg2
+        driver. This project installs psycopg 3 (psycopg[binary]), so the
+        scheme is rewritten to postgresql+psycopg:// up front — the rest of
+        the URL (including passwords with percent-encoding) is untouched.
+        """
+        if not value:
+            return value
+        for scheme in ("postgresql+psycopg2://", "postgresql://", "postgres://"):
+            if value.startswith(scheme):
+                return "postgresql+psycopg://" + value[len(scheme):]
+        return value
 
     # OpenRouter AI Tutor settings.
     openrouter_api_key: str = ""

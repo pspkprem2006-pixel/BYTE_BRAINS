@@ -173,9 +173,11 @@ PostgreSQL) + **OpenRouter** (AI).
 | `OPENROUTER_MODEL`  | Render       | `google/gemini-2.5-flash`                                      |
 | `CORS_ORIGINS`      | Render       | `https://bytebrains.vercel.app` (comma-separated if several)   |
 
-`DATABASE_URL` must use the `postgresql+psycopg://` scheme. On Render, paste
-the "Internal Database URL" and keep `OPENROUTER_API_KEY` empty until you
-add your key in the dashboard.
+`DATABASE_URL` may use the `postgresql+psycopg://`, `postgresql://`,
+`postgres://`, or `postgresql+psycopg2://` schemes — the app automatically
+rewrites it to the psycopg 3 dialect at startup. On Render, just paste the
+"Internal Database URL" and keep `OPENROUTER_API_KEY` empty until you add
+your key in the dashboard.
 
 ### Migrations
 
