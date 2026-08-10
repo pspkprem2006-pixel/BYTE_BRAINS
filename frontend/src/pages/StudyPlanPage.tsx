@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
   Loader2,
@@ -9,6 +10,7 @@ import {
   PenLine,
   RefreshCw,
   ListChecks,
+  Target,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -17,7 +19,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { getSubjects } from '../services/subjects';
 import { generateStudyPlan } from '../services/studyPlan';
-import { getWeakTopics } from '../store/weakTopics';
+import { getWeakTopics, getQuizSession } from '../store/weakTopics';
 import { setStudyPlan } from '../store/studyPlan';
 import type { Subject } from '../types/subject';
 import type {
@@ -37,6 +39,8 @@ const taskTypeMeta: Record<PlanTaskType, { label: string; icon: typeof BookOpen;
 };
 
 export function StudyPlanPage() {
+  const [searchParams] = useSearchParams();
+  const subjectParam = searchParams.get('subject');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [daysAvailable, setDaysAvailable] = useState<number>(5);
@@ -54,15 +58,24 @@ export function StudyPlanPage() {
       setError(null);
       const data = await getSubjects();
       setSubjects(data);
-      if (data.length > 0 && !selectedSubjectId) {
-        setSelectedSubjectId(data[0].id);
+      if (data.length > 0) {
+        setSelectedSubjectId((current) => {
+          if (subjectParam && data.some((s) => s.id === subjectParam)) {
+            return subjectParam;
+          }
+          const sessionSubjectId = getQuizSession()?.subject_id;
+          if (sessionSubjectId && data.some((s) => s.id === sessionSubjectId)) {
+            return sessionSubjectId;
+          }
+          return current ?? data[0].id;
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load subjects');
     } finally {
       setIsLoadingSubjects(false);
     }
-  }, [selectedSubjectId]);
+  }, [subjectParam]);
 
   useEffect(() => {
     loadSubjects();
@@ -126,7 +139,7 @@ export function StudyPlanPage() {
             <div className="flex-1">
               <p className="text-sm font-medium text-rose-800">Something went wrong</p>
               <p className="mt-1 text-sm text-rose-600">{error}</p>
-              <Button variant="outline" size="sm" onClick={handleGenerate} className="mt-3">
+              <Button variant="outline" size="sm" onClick={loadSubjects} className="mt-3">
                 <RotateCcw className="h-4 w-4" aria-hidden="true" />
                 Retry
               </Button>
@@ -140,6 +153,11 @@ export function StudyPlanPage() {
           icon={Sparkles}
           title="No subjects yet"
           description="Create a subject first, then generate a study plan for it."
+          action={
+            <Button to="/subjects" variant="outline">
+              Create Subject
+            </Button>
+          }
         />
       ) : (
         <Card className="mx-auto max-w-xl">
@@ -228,8 +246,14 @@ export function StudyPlanPage() {
             </div>
 
             {weakTopics.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-slate-700">Weak topics from your last quiz</p>
+              <div className="rounded-xl border border-rose-100 bg-rose-50 p-4">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-rose-600" aria-hidden="true" />
+                  <p className="text-sm font-medium text-rose-800">Based on your recent quiz</p>
+                </div>
+                <p className="mt-1 text-xs text-rose-600">
+                  These weak topics will be included in your plan.
+                </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {weakTopics.map((topic) => (
                     <Badge key={topic} tone="rose">
@@ -244,12 +268,12 @@ export function StudyPlanPage() {
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Generating plan…
+                  Creating plan…
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
-                  Generate Plan
+                  Create Study Plan
                 </>
               )}
             </Button>

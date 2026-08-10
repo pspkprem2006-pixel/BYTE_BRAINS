@@ -3,6 +3,7 @@ export interface QuizSession {
   total: number;
   weakTopics: string[];
   completedAt: string;
+  subject_id: string | null;
 }
 
 let quizSession: QuizSession | null = null;
@@ -24,13 +25,15 @@ export function getQuizSession(): QuizSession | null {
 export function setQuizSession(
   score: number,
   total: number,
-  weakTopicsList: string[]
+  weakTopicsList: string[],
+  subjectId: string | null = null
 ): void {
   quizSession = {
     score,
     total,
     weakTopics: weakTopicsList,
     completedAt: new Date().toISOString(),
+    subject_id: subjectId,
   };
   weakTopics = weakTopicsList;
 }

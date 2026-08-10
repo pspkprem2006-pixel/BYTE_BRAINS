@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
-import { Bot, FileText, Send, Sparkles, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Bot, FileText, Send, Sparkles, Loader2, AlertCircle, RotateCcw, ListChecks } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -17,6 +18,8 @@ const suggestionPrompts = [
 ];
 
 export function TutorPage() {
+  const [searchParams] = useSearchParams();
+  const materialParam = searchParams.get('material');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
   const [messages, setMessages] = useState<TutorMessage[]>([]);
@@ -30,15 +33,20 @@ export function TutorPage() {
       setError(null);
       const data = await getMaterials();
       setMaterials(data);
-      if (data.length > 0 && !selectedMaterialId) {
-        setSelectedMaterialId(data[0].id);
+      if (data.length > 0) {
+        setSelectedMaterialId((current) => {
+          if (materialParam && data.some((m) => m.id === materialParam)) {
+            return materialParam;
+          }
+          return current ?? data[0].id;
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load materials');
     } finally {
       setIsLoadingMaterials(false);
     }
-  }, [selectedMaterialId]);
+  }, [materialParam]);
 
   useEffect(() => {
     loadMaterials();
@@ -116,18 +124,26 @@ export function TutorPage() {
         subtitle="Chat with your personal study assistant — grounded in your materials."
         action={
           materials.length > 0 && (
-            <select
-              value={selectedMaterialId}
-              onChange={(e) => handleMaterialChange(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
-              disabled={isAsking}
-            >
-              {materials.map((material) => (
-                <option key={material.id} value={material.id}>
-                  {material.original_filename} ({material.processing_status})
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedMaterialId}
+                onChange={(e) => handleMaterialChange(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
+                disabled={isAsking}
+              >
+                {materials.map((material) => (
+                  <option key={material.id} value={material.id}>
+                    {material.original_filename} ({material.processing_status})
+                  </option>
+                ))}
+              </select>
+              {selectedMaterial && (
+                <Button to={`/quizzes?material=${selectedMaterial.id}`}>
+                  <ListChecks className="h-4 w-4" aria-hidden="true" />
+                  Test My Knowledge
+                </Button>
+              )}
+            </div>
           )
         }
       />

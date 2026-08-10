@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Loader2,
   AlertCircle,
@@ -8,6 +9,7 @@ import {
   Trophy,
   RefreshCw,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -21,6 +23,8 @@ import type { Material } from '../types/material';
 import type { QuizQuestion } from '../types/quiz';
 
 export function QuizzesPage() {
+  const [searchParams] = useSearchParams();
+  const materialParam = searchParams.get('material');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
   const [questionCount, setQuestionCount] = useState<number>(5);
@@ -38,15 +42,20 @@ export function QuizzesPage() {
       setError(null);
       const data = await getMaterials();
       setMaterials(data);
-      if (data.length > 0 && !selectedMaterialId) {
-        setSelectedMaterialId(data[0].id);
+      if (data.length > 0) {
+        setSelectedMaterialId((current) => {
+          if (materialParam && data.some((m) => m.id === materialParam)) {
+            return materialParam;
+          }
+          return current ?? data[0].id;
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load materials');
     } finally {
       setIsLoadingMaterials(false);
     }
-  }, [selectedMaterialId]);
+  }, [materialParam]);
 
   useEffect(() => {
     loadMaterials();
@@ -113,7 +122,8 @@ export function QuizzesPage() {
 
   const handleSubmitQuiz = () => {
     setSubmitted(true);
-    setQuizSession(score, quiz ? quiz.length : 0, weakTopics);
+    const subjectId = materials.find((m) => m.id === selectedMaterialId)?.subject_id ?? null;
+    setQuizSession(score, quiz ? quiz.length : 0, weakTopics, subjectId);
     setWeakTopics(weakTopics);
   };
 
@@ -224,17 +234,23 @@ export function QuizzesPage() {
         <PageHeader title="Quiz Complete" subtitle="Here's how you did." />
 
         <Card className="mx-auto max-w-2xl">
-          <div className="flex flex-col items-center py-4 text-center">
+          <div className="flex flex-col items-center py-8 text-center">
             <span className="rounded-2xl bg-emerald-50 p-4 text-emerald-600">
               <Trophy className="h-8 w-8" aria-hidden="true" />
             </span>
-            <h2 className="mt-4 text-2xl font-bold">
-              Score: {score} / {quiz.length}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">{percent}%</p>
+            <p className="mt-5 text-xs font-semibold tracking-widest text-slate-400 uppercase">
+              Your Score
+            </p>
+            <p className="mt-1 text-4xl font-bold tracking-tight">
+              {percent}
+              <span className="text-lg font-normal text-slate-400">%</span>
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {score} of {quiz.length} questions correct
+            </p>
           </div>
 
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 border-t border-slate-100 px-6 pt-6 pb-8 sm:grid-cols-2">
             <div>
               <h3 className="text-sm font-semibold text-emerald-700">Strong Topics</h3>
               {strongTopics.length === 0 ? (
@@ -257,7 +273,7 @@ export function QuizzesPage() {
                 <ul className="mt-2 space-y-1">
                   {weakTopics.map((topic) => (
                     <li key={topic} className="text-sm text-slate-600">
-                      • {topic}
+                      🔥 {topic}
                     </li>
                   ))}
                 </ul>
@@ -265,7 +281,7 @@ export function QuizzesPage() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-3 border-t border-slate-100 px-6 py-5">
             <Button to="/study-plan">
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               Create Study Plan
@@ -325,6 +341,12 @@ export function QuizzesPage() {
           icon={Sparkles}
           title="No materials yet"
           description="Upload study material first, then generate a quiz from it."
+          action={
+            <Button to="/materials" variant="outline">
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Upload Material
+            </Button>
+          }
         />
       ) : (
         <Card className="mx-auto max-w-xl">

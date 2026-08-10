@@ -58,7 +58,7 @@ const quickActions = [
     tone: 'bg-amber-50 text-amber-600',
   },
   {
-    label: 'Study Plan',
+    label: 'Create Study Plan',
     icon: CalendarDays,
     to: '/study-plan',
     tone: 'bg-rose-50 text-rose-600',

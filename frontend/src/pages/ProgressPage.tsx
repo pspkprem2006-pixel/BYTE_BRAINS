@@ -9,6 +9,8 @@ import {
   AlertCircle,
   RotateCcw,
   Sparkles,
+  MessageSquareText,
+  Flame,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -294,6 +296,139 @@ export function ProgressPage() {
             />
           )}
         </section>
+      </section>
+
+      <section aria-labelledby="next-steps-heading" className="mt-10">
+        <SectionHeading
+          title="What should I do next?"
+          subtitle="Your next best step on the learning journey."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {summary.materials_count === 0 ? (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600">
+                  <BookOpen className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">1. Upload study material</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Start the journey by adding a PDF or TXT document.
+                  </p>
+                  <Button to="/materials" variant="outline" size="sm" className="mt-3">
+                    Upload Material
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600">
+                  <MessageSquareText className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">1. Learn with the AI Tutor</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Ask questions about your material before testing yourself.
+                  </p>
+                  <Button to="/tutor" variant="outline" size="sm" className="mt-3">
+                    Ask Tutor
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {!summary.quiz_session ? (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-amber-50 p-2.5 text-amber-600">
+                  <ListChecks className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">2. Test your knowledge</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Complete a quiz to find your weak topics.
+                  </p>
+                  <Button to="/quizzes" variant="outline" size="sm" className="mt-3">
+                    Take a Quiz
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : !summary.study_plan ? (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
+                  <Target className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">2. Fix your weak topics</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Create a study plan that targets your quiz weak spots.
+                  </p>
+                  <Button to="/study-plan" variant="outline" size="sm" className="mt-3">
+                    Create Study Plan
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
+                  <Target className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">2. Track your weak topics</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Review what needs practice and retake quizzes.
+                  </p>
+                  <Button to="/quizzes" variant="outline" size="sm" className="mt-3">
+                    Take a Quiz
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {summary.study_plan ? (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600">
+                  <Flame className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">3. Follow your study plan</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Continue with today's recommended tasks.
+                  </p>
+                  <Button to="/study-plan" variant="outline" size="sm" className="mt-3">
+                    Continue Studying
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex items-start gap-4 p-5">
+                <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600">
+                  <CalendarDays className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">3. Get a study plan</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Complete a quiz to identify weak topics and create a plan.
+                  </p>
+                  <Button to="/study-plan" variant="outline" size="sm" className="mt-3">
+                    Create Study Plan
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
       </section>
     </>
   );

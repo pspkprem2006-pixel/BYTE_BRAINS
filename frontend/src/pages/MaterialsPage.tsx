@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, AlertCircle, RotateCcw, FileText, File, X } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, RotateCcw, FileText, File, X, MessageSquareText, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -295,6 +295,7 @@ export function MaterialsPage() {
           <Card padded={false} className="divide-y divide-slate-100">
             {materials.map((material) => {
                 const FileIcon = getFileIcon(material.file_type);
+                const isReady = material.processing_status === 'processed';
                 return (
                   <div key={material.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4">
                     <div className="min-w-0 flex-1">
@@ -310,6 +311,26 @@ export function MaterialsPage() {
                     <Badge tone={getStatusTone(material.processing_status)}>
                       {material.processing_status}
                     </Badge>
+                    {isReady && (
+                      <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                        <Button
+                          to={`/tutor?material=${material.id}`}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <MessageSquareText className="h-4 w-4" aria-hidden="true" />
+                          Ask Tutor
+                        </Button>
+                        <Button
+                          to={`/quizzes?material=${material.id}`}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Sparkles className="h-4 w-4" aria-hidden="true" />
+                          Generate Quiz
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
