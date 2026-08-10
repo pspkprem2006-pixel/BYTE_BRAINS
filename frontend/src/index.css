@@ -1,1 +1,15 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/* Design system tokens for the ByteBrains UI. */
+@theme {
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  /* Guards against horizontal overflow on small screens. */
+  overflow-x: hidden;
+}

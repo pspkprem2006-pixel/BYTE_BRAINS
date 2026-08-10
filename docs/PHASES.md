@@ -5,10 +5,11 @@ implemented ahead of schedule.
 
 | Phase | Scope |
 | ----- | ----- |
-| 1 (current) | Project foundation: frontend shell, backend `/health`, docs, env setup. No auth, no AI. |
-| 2 | Student authentication |
-| 3 | Dashboard, subjects & topics |
-| 4 | Study material upload + PostgreSQL database |
-| 5 | AI tutor + RAG-based learning from uploaded material |
-| 6 | AI quiz generation & evaluation |
-| 7 | Performance tracking, weak-topic detection & adaptive study planning |
+| 1 | Project foundation: frontend shell, backend `/health`, docs, env setup. No auth, no AI. ✅ |
+| 2 (current) | Frontend UI shell: responsive app layout, routing, and all 8 pages on demo data. ✅ |
+| 3 | Student authentication |
+| 4 | Dashboard, subjects & topics |
+| 5 | Study material upload + PostgreSQL database |
+| 6 | AI tutor + RAG-based learning from uploaded material |
+| 7 | AI quiz generation & evaluation |
+| 8 | Performance tracking, weak-topic detection & adaptive study planning |

@@ -5,9 +5,11 @@ It will help students upload study material, learn with an AI tutor, take
 AI-generated quizzes, and follow an adaptive study plan that targets their
 weak topics.
 
-> Current status: **Phase 1 — project foundation**. Only the basic
-> frontend shell and backend health endpoint exist. No authentication,
-> database schema, AI, or learning features are implemented yet.
+> Current status: **Phase 2 — frontend UI shell**. The full application shell
+> (sidebar, top bar, responsive navigation), all 8 routes, and the dashboard,
+> AI tutor, subjects, materials, quizzes, progress, study plan and settings
+> pages are built on demo data. No authentication, database schema, AI, or
+> backend features are implemented yet.
 
 ## Technology stack
 
@@ -31,7 +33,10 @@ features are added phase by phase.
 ```
 ByteBrains/
 ├── frontend/          # React + Vite + TypeScript + Tailwind app
-│   ├── src/           # application source
+│   ├── src/
+│   │   ├── components/    # layout (shell), ui primitives, domain components
+│   │   ├── pages/         # one component per route
+│   │   └── data/          # mockData.ts (temporary demo data)
 │   └── .env.example
 ├── backend/           # FastAPI service
 │   ├── app/
