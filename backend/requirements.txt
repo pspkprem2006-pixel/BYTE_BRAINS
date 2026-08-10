@@ -2,3 +2,12 @@ fastapi
 uvicorn[standard]
 pydantic
 pydantic-settings
+
+# Database
+sqlalchemy
+psycopg[binary]
+alembic
+
+# Testing
+pytest
+httpx
