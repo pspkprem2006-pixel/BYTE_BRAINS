@@ -48,7 +48,7 @@ export function QuizzesPage() {
           if (materialParam && data.some((m) => m.id === materialParam)) {
             return materialParam;
           }
-          return current ?? data[0].id;
+          return current || data[0].id;
         });
       }
     } catch (err) {
@@ -63,7 +63,10 @@ export function QuizzesPage() {
   }, [loadMaterials]);
 
   const handleGenerate = async () => {
-    if (!selectedMaterialId) return;
+    if (!selectedMaterialId) {
+      setError('Please select a study material before generating a quiz.');
+      return;
+    }
     setIsGenerating(true);
     setError(null);
     try {
@@ -373,6 +376,11 @@ export function QuizzesPage() {
                   </option>
                 ))}
               </select>
+              {!selectedMaterialId && (
+                <p className="mt-1 text-xs text-amber-600">
+                  Select a study material above to enable quiz generation.
+                </p>
+              )}
             </div>
 
             <div>
@@ -395,7 +403,11 @@ export function QuizzesPage() {
               </div>
             </div>
 
-            <Button onClick={handleGenerate} disabled={isGenerating} className="w-full">
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || !selectedMaterialId}
+              className="w-full"
+            >
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
