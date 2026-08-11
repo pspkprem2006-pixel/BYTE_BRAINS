@@ -19,7 +19,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     let detail = 'Request failed';
     try {
       const error = await response.json();
-      detail = error.detail ?? detail;
+      if (typeof error.detail === 'string') {
+        detail = error.detail;
+      } else if (Array.isArray(error.detail)) {
+        detail = error.detail
+          .map((item: { msg?: string }) => item?.msg ?? 'Invalid input')
+          .join('; ');
+      } else if (error.detail) {
+        detail = String(error.detail);
+      }
     } catch {
       detail = `${response.status} ${response.statusText}`;
     }

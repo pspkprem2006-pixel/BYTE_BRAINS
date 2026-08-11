@@ -68,7 +68,7 @@ export function StudyPlanPage() {
           if (sessionSubjectId && data.some((s) => s.id === sessionSubjectId)) {
             return sessionSubjectId;
           }
-          return current ?? data[0].id;
+          return current || data[0].id;
         });
       }
     } catch (err) {

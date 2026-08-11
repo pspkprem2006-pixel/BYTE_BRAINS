@@ -241,7 +241,7 @@ export function TutorPage() {
                 {messages.map((message, index) =>
                   message.role === 'user' ? (
                     <div key={index} className="flex justify-end">
-                      <div className="max-w-[80%] rounded-2xl rounded-br-md bg-indigo-600 px-4 py-2.5 text-sm text-white">
+                      <div className="max-w-[80%] break-words rounded-2xl rounded-br-md bg-indigo-600 px-4 py-2.5 text-sm text-white">
                         {message.content}
                       </div>
                     </div>
@@ -254,7 +254,7 @@ export function TutorPage() {
                         <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                           ByteBrains Tutor
                         </p>
-                        <p className="mt-1 text-sm whitespace-pre-wrap text-slate-600">{message.content}</p>
+                        <p className="mt-1 text-sm break-words whitespace-pre-wrap text-slate-600">{message.content}</p>
                       </div>
                     </div>
                   ),

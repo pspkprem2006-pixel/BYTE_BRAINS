@@ -66,8 +66,11 @@ async def upload_material(
         raise HTTPException(status_code=404, detail="Subject not found")
     except material_service.EmptyDocumentError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except material_service.ExtractionError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except material_service.ExtractionError:
+        raise HTTPException(
+            status_code=422,
+            detail="Could not read the file. Make sure the PDF is valid and text-based.",
+        )
 
     return material
 

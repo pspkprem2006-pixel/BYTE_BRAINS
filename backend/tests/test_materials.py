@@ -115,10 +115,27 @@ def test_unsupported_file_type_rejected() -> None:
     response = client.post(
         "/api/materials/upload",
         data={"subject_id": subject["id"]},
-        files={"file": ("test.doc", bad_file, "application/msword")},
+        files={"file": ("bad.txt", bad_file, "application/x-unknown")},
     )
     assert response.status_code == 400
     assert "Only PDF and TXT" in response.json()["detail"]
+
+    client.delete(f"/api/subjects/{subject['id']}")
+
+
+def test_malformed_pdf_rejected_with_clean_error() -> None:
+    subject = _create_subject()
+    malformed_pdf = BytesIO(b"%PDF-1.4\nthis is not a real pdf at all")
+
+    response = client.post(
+        "/api/materials/upload",
+        data={"subject_id": subject["id"]},
+        files={"file": ("broken.pdf", malformed_pdf, "application/pdf")},
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "Could not read the file" in detail
+    assert "uploads" not in detail
 
     client.delete(f"/api/subjects/{subject['id']}")
 

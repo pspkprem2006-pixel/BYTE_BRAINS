@@ -39,6 +39,7 @@ export function MaterialsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSubjectSelect, setShowSubjectSelect] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const loadSubjects = useCallback(async () => {
     try {
@@ -79,9 +80,8 @@ export function MaterialsPage() {
     loadMaterials();
   }, [loadMaterials]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !selectedSubjectId) return;
+  const validateAndUpload = (file: File): void => {
+    if (!selectedSubjectId) return;
 
     const allowedTypes = ['application/pdf', 'text/plain'];
     if (!allowedTypes.includes(file.type)) {
@@ -96,7 +96,21 @@ export function MaterialsPage() {
     }
 
     uploadFile(file);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    validateAndUpload(file);
     event.target.value = '';
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file || !selectedSubjectId) return;
+    validateAndUpload(file);
   };
 
   const uploadFile = async (file: File) => {
@@ -218,7 +232,15 @@ export function MaterialsPage() {
             />
             <label
               htmlFor="file-upload"
-              className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center cursor-pointer transition-colors hover:border-indigo-400 hover:bg-indigo-50/60"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center cursor-pointer transition-colors hover:border-indigo-400 hover:bg-indigo-50/60 ${
+                isDragging ? 'border-indigo-500 bg-indigo-50' : ''
+              }`}
             >
               <div className="flex flex-col items-center gap-2">
                 <p className="text-base font-semibold text-slate-800">
