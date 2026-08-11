@@ -280,3 +280,193 @@ def test_existing_tests_still_pass() -> None:
     subject = _create_subject()
     assert subject["id"]
     client.delete(f"/api/subjects/{subject['id']}")
+
+
+def _submit_payload(
+    material_id: str,
+    correct: int = 3,
+    total: int = 5,
+    topics: list[dict] | None = None,
+) -> dict:
+    return {
+        "material_id": material_id,
+        "total_questions": total,
+        "correct_answers": correct,
+        "topic_results": topics
+        or [{"topic": "Databases", "correct": correct, "total": total}],
+    }
+
+
+def _delete_attempts_for_subject(subject_id: str) -> None:
+    """Remove quiz attempts (RESTRICT FK) so the subject can be deleted."""
+    from app.core.database import SessionLocal
+    from app.models import QuizAttempt
+
+    db = SessionLocal()
+    try:
+        db.query(QuizAttempt).filter(
+            QuizAttempt.subject_id == uuid.UUID(subject_id)
+        ).delete(synchronize_session=False)
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_submit_attempt_creates_attempt_and_topic_progress() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    response = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(material["id"], correct=3, total=5),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["quiz_title"].startswith("Quiz:")
+    assert body["total_questions"] == 5
+    assert body["correct_answers"] == 3
+    assert body["score"] == 60
+    assert body["completed_at"]
+
+    attempts = client.get("/api/quizzes/attempts").json()
+    assert attempts[0]["id"] == body["attempt_id"]
+    assert attempts[0]["score"] == 60
+    assert attempts[0]["subject_name"] == subject["name"]
+
+    progress = client.get("/api/progress").json()
+    assert len(progress) == 1
+    assert progress[0]["topic_name"] == "Databases"
+    assert progress[0]["subject_name"] == subject["name"]
+    assert progress[0]["mastery_score"] == 60
+    assert progress[0]["topics_completed"] == 1
+
+    _delete_attempts_for_subject(subject["id"])
+    client.delete(f"/api/subjects/{subject['id']}")
+
+
+def test_submit_attempt_upserts_topic_progress() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(material["id"], correct=3, total=5),
+    )
+    client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(material["id"], correct=5, total=5),
+    )
+
+    progress = client.get("/api/progress").json()
+    assert len(progress) == 1
+    assert progress[0]["mastery_score"] == 80
+    assert progress[0]["topics_completed"] == 2
+
+    attempts = client.get("/api/quizzes/attempts").json()
+    assert len(attempts) == 2
+
+    _delete_attempts_for_subject(subject["id"])
+    client.delete(f"/api/subjects/{subject['id']}")
+
+
+def test_submit_attempt_multiple_topics_creates_one_row_each() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    response = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(
+            material["id"],
+            correct=2,
+            total=4,
+            topics=[
+                {"topic": "Databases", "correct": 1, "total": 2},
+                {"topic": "SQL", "correct": 1, "total": 2},
+            ],
+        ),
+    )
+    assert response.status_code == 200
+
+    progress = client.get("/api/progress").json()
+    assert {item["topic_name"] for item in progress} == {"Databases", "SQL"}
+
+    _delete_attempts_for_subject(subject["id"])
+    client.delete(f"/api/subjects/{subject['id']}")
+
+
+def test_submit_attempt_missing_material_returns_404() -> None:
+    response = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(str(uuid.uuid4())),
+    )
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Material not found"}
+
+
+def test_submit_attempt_answers_exceed_total_rejected() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    response = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(material["id"], correct=6, total=5),
+    )
+    assert response.status_code == 422
+
+
+def test_submit_attempt_topic_correct_exceeds_total_rejected() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    response = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(
+            material["id"],
+            topics=[{"topic": "Databases", "correct": 4, "total": 3}],
+        ),
+    )
+    assert response.status_code == 422
+
+
+def test_submit_attempt_duplicate_topics_rejected() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    response = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(
+            material["id"],
+            topics=[
+                {"topic": "Databases", "correct": 2, "total": 3},
+                {"topic": "Databases", "correct": 1, "total": 2},
+            ],
+        ),
+    )
+    assert response.status_code == 422
+
+    client.delete(f"/api/subjects/{subject['id']}")
+
+
+def test_attempts_ordered_recent_first() -> None:
+    subject = _create_subject()
+    material = _create_material(subject["id"])
+
+    client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(material["id"], correct=2, total=5),
+    )
+    second = client.post(
+        "/api/quizzes/submit",
+        json=_submit_payload(material["id"], correct=4, total=5),
+    ).json()
+
+    attempts = client.get("/api/quizzes/attempts").json()
+    assert attempts[0]["id"] == second["attempt_id"]
+    assert attempts[0]["score"] == 80
+
+    _delete_attempts_for_subject(subject["id"])
+    client.delete(f"/api/subjects/{subject['id']}")
+
+
+def test_progress_empty_when_no_attempts() -> None:
+    assert client.get("/api/progress").json() == []

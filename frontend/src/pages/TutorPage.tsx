@@ -4,6 +4,7 @@ import { Bot, FileText, Send, Sparkles, Loader2, AlertCircle, RotateCcw, ListChe
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
 import { getMaterials } from '../services/materials';
 import { askTutor } from '../services/tutor';
@@ -44,7 +45,7 @@ export function TutorPage() {
           if (materialParam && data.some((m) => m.id === materialParam)) {
             return materialParam;
           }
-          return current ?? data[0].id;
+          return current || data[0].id;
         });
       }
     } catch (err) {
@@ -59,7 +60,10 @@ export function TutorPage() {
   }, [loadMaterials]);
 
   const handleAsk = async (question: string) => {
-    if (!selectedMaterialId) return;
+    if (!selectedMaterialId) {
+      setError('Please select a study material before asking the tutor.');
+      return;
+    }
     const trimmed = question.trim();
     if (!trimmed) return;
 
@@ -170,6 +174,19 @@ export function TutorPage() {
         </Card>
       )}
 
+      {materials.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No study material yet."
+          description="Upload a PDF or TXT document first — the AI tutor answers questions grounded in your material."
+          action={
+            <Button to="/materials" variant="outline">
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Upload Material
+            </Button>
+          }
+        />
+      ) : (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_19rem]">
         {/* Conversation */}
         <Card padded={false} className="flex h-[70vh] min-h-[30rem] flex-col overflow-hidden lg:h-[calc(100vh-11.5rem)]">
@@ -319,6 +336,7 @@ export function TutorPage() {
           </p>
         </Card>
       </div>
+      )}
     </>
   );
 }

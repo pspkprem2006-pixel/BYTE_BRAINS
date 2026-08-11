@@ -123,8 +123,10 @@ export function DashboardPage() {
     );
   }
 
-  const quizPercent =
-    summary.quiz_session && summary.quiz_session.total > 0
+  const latestAttempt = summary.attempts[0] ?? null;
+  const quizPercent = latestAttempt
+    ? latestAttempt.score
+    : summary.quiz_session && summary.quiz_session.total > 0
       ? Math.round((summary.quiz_session.score / summary.quiz_session.total) * 100)
       : null;
 
@@ -155,8 +157,8 @@ export function DashboardPage() {
         />
         <StatCard
           label="Quizzes"
-          value={summary.quiz_session ? '1' : '0'}
-          hint="this session"
+          value={String(summary.attempts.length)}
+          hint="completed quizzes"
           icon={ListChecks}
         />
         <StatCard
@@ -254,27 +256,30 @@ export function DashboardPage() {
       <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section aria-labelledby="recent-activity-heading">
           <SectionHeading title="📝 Recent Activity" subtitle="Your latest quiz result." />
-          {summary.quiz_session ? (
+          {latestAttempt ? (
             <Card>
               <div className="flex items-center gap-4">
                 <span className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
                   <GraduationCap className="h-6 w-6" aria-hidden="true" />
                 </span>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold">
-                    Score: {summary.quiz_session.score} / {summary.quiz_session.total}
-                    {quizPercent !== null && (
-                      <span className="ml-2 text-slate-500">({quizPercent}%)</span>
-                    )}
+                  <p className="truncate text-sm font-semibold text-slate-800">
+                    {latestAttempt.quiz_title}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Completed{' '}
-                    {new Date(summary.quiz_session.completedAt).toLocaleString()}
+                    Score: {latestAttempt.score}% • {latestAttempt.subject_name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {latestAttempt.completed_at
+                      ? `Completed ${new Date(latestAttempt.completed_at).toLocaleString()}`
+                      : 'Completed'}
                   </p>
                 </div>
-                <Badge tone="indigo">Latest quiz</Badge>
+                <Badge tone={latestAttempt.score >= 70 ? 'emerald' : 'amber'}>
+                  Latest quiz
+                </Badge>
               </div>
-              {summary.quiz_session.weakTopics.length > 0 && (
+              {summary.quiz_session && summary.quiz_session.weakTopics.length > 0 && (
                 <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
                   Weak topics: {summary.quiz_session.weakTopics.join(', ')}
                 </p>

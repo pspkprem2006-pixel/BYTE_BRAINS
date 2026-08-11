@@ -18,10 +18,10 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { getMaterials } from '../services/materials';
-import { generateQuiz } from '../services/quizzes';
+import { generateQuiz, submitQuiz } from '../services/quizzes';
 import { setWeakTopics, setQuizSession } from '../store/weakTopics';
 import type { Material } from '../types/material';
-import type { QuizQuestion } from '../types/quiz';
+import type { QuizQuestion, TopicResult } from '../types/quiz';
 
 export function QuizzesPage() {
   const [searchParams] = useSearchParams();
@@ -37,6 +37,7 @@ export function QuizzesPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const loadMaterials = useCallback(async () => {
     try {
@@ -94,6 +95,7 @@ export function QuizzesPage() {
     setAnswers([]);
     setCurrentIndex(0);
     setSubmitted(false);
+    setSaveError(null);
   };
 
   const handleSelectOption = (optionIndex: number) => {
@@ -124,11 +126,45 @@ export function QuizzesPage() {
         ]
       : [];
 
-  const handleSubmitQuiz = () => {
+  const buildTopicResults = (
+    questions: QuizQuestion[],
+    answersList: (number | null)[]
+  ): TopicResult[] => {
+    const byTopic = new Map<string, { correct: number; total: number }>();
+    questions.forEach((question, index) => {
+      const entry = byTopic.get(question.topic) ?? { correct: 0, total: 0 };
+      entry.total += 1;
+      if (answersList[index] === question.correct_answer) {
+        entry.correct += 1;
+      }
+      byTopic.set(question.topic, entry);
+    });
+    return Array.from(byTopic, ([topic, counts]) => ({ topic, ...counts }));
+  };
+
+  const handleSubmitQuiz = async () => {
     setSubmitted(true);
-    const subjectId = materials.find((m) => m.id === selectedMaterialId)?.subject_id ?? null;
+    const material = materials.find((m) => m.id === selectedMaterialId) ?? null;
+    const subjectId = material?.subject_id ?? null;
     setQuizSession(score, quiz ? quiz.length : 0, weakTopics, subjectId);
     setWeakTopics(weakTopics);
+
+    if (!quiz || !material) return;
+
+    // Persist the real attempt outcome (score derived from answers).
+    try {
+      await submitQuiz({
+        material_id: material.id,
+        total_questions: quiz.length,
+        correct_answers: score,
+        topic_results: buildTopicResults(quiz, answers),
+      });
+      setSaveError(null);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : 'Failed to save quiz result'
+      );
+    }
   };
 
   const strongTopics =
@@ -300,6 +336,18 @@ export function QuizzesPage() {
               Try Again
             </Button>
           </div>
+
+          {saveError && (
+            <div className="border-t border-slate-100 px-6 py-4">
+              <p className="flex items-start gap-2 text-sm text-amber-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>
+                  Your result was shown but could not be saved to your progress history:
+                  {saveError}
+                </span>
+              </p>
+            </div>
+          )}
         </Card>
       </>
     );

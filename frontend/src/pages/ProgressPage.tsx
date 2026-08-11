@@ -17,6 +17,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { StatCard } from '../components/ui/StatCard';
 import { getDashboardSummary } from '../services/dashboard';
 import type { DashboardSummary } from '../services/dashboard';
@@ -90,8 +91,10 @@ export function ProgressPage() {
     );
   }
 
-  const quizPercent =
-    summary.quiz_session && summary.quiz_session.total > 0
+  const latestAttempt = summary.attempts[0] ?? null;
+  const quizPercent = latestAttempt
+    ? latestAttempt.score
+    : summary.quiz_session && summary.quiz_session.total > 0
       ? Math.round((summary.quiz_session.score / summary.quiz_session.total) * 100)
       : null;
 
@@ -125,27 +128,33 @@ export function ProgressPage() {
         <section aria-labelledby="quiz-performance-heading">
           <SectionHeading
             title="Quiz performance"
-            subtitle="Your most recent quiz result."
+            subtitle="Your most recent quiz result, saved from real attempts."
           />
-          {summary.quiz_session ? (
+          {latestAttempt ? (
             <Card>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-bold tracking-tight">
-                    {summary.quiz_session.score}
+                  <p className="truncate text-sm font-medium text-slate-600">
+                    {latestAttempt.quiz_title}
+                  </p>
+                  <p className="mt-1 text-3xl font-bold tracking-tight">
+                    {latestAttempt.correct_answers}
                     <span className="text-lg font-normal text-slate-400">
-                      {' '}/ {summary.quiz_session.total}
+                      {' '}/ {latestAttempt.total_questions}
                     </span>
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    Completed {new Date(summary.quiz_session.completedAt).toLocaleString()}
+                    {latestAttempt.subject_name} •{' '}
+                    {latestAttempt.completed_at
+                      ? new Date(latestAttempt.completed_at).toLocaleString()
+                      : 'completed'}
                   </p>
                 </div>
-                <Badge tone={quizPercent !== null && quizPercent >= 70 ? 'emerald' : 'amber'}>
-                  {quizPercent !== null ? `${quizPercent}%` : '—'}
+                <Badge tone={latestAttempt.score >= 70 ? 'emerald' : 'amber'}>
+                  {latestAttempt.score}%
                 </Badge>
               </div>
-              {summary.quiz_session.weakTopics.length > 0 && (
+              {summary.quiz_session && summary.quiz_session.weakTopics.length > 0 && (
                 <div className="mt-4 border-t border-slate-100 pt-4">
                   <p className="text-sm font-medium text-slate-700">Needs improvement</p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -296,6 +305,58 @@ export function ProgressPage() {
             />
           )}
         </section>
+      </section>
+
+      <section aria-labelledby="topic-mastery-heading" className="mt-10">
+        <SectionHeading
+          title="Topic mastery"
+          subtitle="Per-topic performance averaged from your quiz attempts."
+        />
+        {summary.progress.length === 0 ? (
+          <EmptyState
+            icon={Target}
+            title="No topic data yet"
+            description="Submit a quiz and each topic you were tested on will appear here."
+            action={
+              <Button to="/quizzes" variant="outline" size="sm">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Take a Quiz
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {summary.progress.map((item) => (
+              <Card key={item.topic_id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-800">
+                      {item.topic_name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {item.subject_name}
+                    </p>
+                  </div>
+                  <Badge tone={item.mastery_score >= 70 ? 'emerald' : 'amber'}>
+                    {item.mastery_score}%
+                  </Badge>
+                </div>
+                <ProgressBar
+                  value={item.mastery_score}
+                  label={`${item.mastery_score}% mastery`}
+                  className="mt-4"
+                />
+                <p className="mt-3 text-xs text-slate-400">
+                  From {item.topics_completed} attempt
+                  {item.topics_completed === 1 ? '' : 's'}
+                  {item.last_studied_at
+                    ? ` • last studied ${new Date(item.last_studied_at).toLocaleDateString()}`
+                    : ''}
+                </p>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="next-steps-heading" className="mt-10">

@@ -1,12 +1,18 @@
 """Quiz REST API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import Material, User
-from app.schemas.quiz import QuizGenerateRequest, QuizGenerateResponse
-from app.services import ai_service
+from app.schemas.quiz import (
+    QuizAttemptSummary,
+    QuizGenerateRequest,
+    QuizGenerateResponse,
+    QuizSubmitRequest,
+    QuizSubmitResponse,
+)
+from app.services import ai_service, quiz_progress_service
 from app.services.development_user import get_current_development_user
 
 router = APIRouter(prefix="/api/quizzes", tags=["quizzes"])
@@ -64,3 +70,56 @@ async def generate_quiz(
         )
 
     return quiz
+
+
+@router.post(
+    "/submit",
+    response_model=QuizSubmitResponse,
+    summary="Persist a finished quiz attempt",
+    description="Save the outcome of a completed quiz and update per-topic mastery.",
+)
+def submit_quiz_attempt(
+    request: QuizSubmitRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> QuizSubmitResponse:
+    try:
+        attempt = quiz_progress_service.submit_quiz_attempt(db, user, request)
+    except quiz_progress_service.MaterialNotFoundError:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    return QuizSubmitResponse(
+        attempt_id=attempt.id,
+        quiz_title=attempt.quiz_title,
+        total_questions=attempt.total_questions,
+        correct_answers=attempt.correct_answers,
+        score=attempt.score,
+        completed_at=attempt.completed_at,
+    )
+
+
+@router.get(
+    "/attempts",
+    response_model=list[QuizAttemptSummary],
+    summary="List recent quiz attempts",
+    description="Return the current user's most recent quiz attempts.",
+)
+def list_quiz_attempts(
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[QuizAttemptSummary]:
+    rows = quiz_progress_service.list_recent_attempts(db, user, limit)
+    return [
+        QuizAttemptSummary(
+            id=attempt.id,
+            quiz_title=attempt.quiz_title,
+            subject_id=attempt.subject_id,
+            subject_name=subject_name,
+            total_questions=attempt.total_questions,
+            correct_answers=attempt.correct_answers,
+            score=attempt.score,
+            completed_at=attempt.completed_at,
+        )
+        for attempt, subject_name in rows
+    ]

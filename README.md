@@ -8,9 +8,9 @@ weak topics.
 > Current status: **all core features implemented**. Upload study materials
 > (PDF/TXT) with automatic text extraction, chat with an AI tutor grounded in
 > your material, generate and take AI quizzes, get an adaptive AI study plan,
-> and track progress on the dashboard. Session data (quiz results, weak
-> topics, study plans) is kept in memory; student authentication and data
-> persistence across sessions arrive in a later phase.
+> and track progress on the dashboard. Quiz attempts and per-topic mastery
+> are persisted in PostgreSQL; weak topics and study plans are session data
+> kept in memory. Student authentication arrives in a later phase.
 
 ## Technology stack
 
@@ -139,9 +139,10 @@ clear error with a Retry button instead of crashing.
 
 ## Known limitations
 
-- No authentication — a single development user owns all data; sessions
-  (quiz history, weak topics, study plans) are kept in the frontend's memory
-  and are lost on refresh.
+- No authentication — a single development user owns all data.
+- Weak topics and study plans are session data kept in the frontend's
+  memory (they reset on refresh); quiz attempts and per-topic mastery are
+  persisted in PostgreSQL.
 - Uploads are stored locally in `backend/uploads/` — no cloud storage.
 - The AI model varies by OpenRouter availability; the tutor's answers are
   grounded in your material text only.
