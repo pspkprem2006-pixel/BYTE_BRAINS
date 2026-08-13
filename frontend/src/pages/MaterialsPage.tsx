@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, AlertCircle, RotateCcw, FileText, File, X, MessageSquareText, Sparkles } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, RotateCcw, FileText, File, MessageSquareText, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -38,7 +38,6 @@ export function MaterialsPage() {
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSubjectSelect, setShowSubjectSelect] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
   const loadSubjects = useCallback(async () => {
@@ -129,7 +128,10 @@ export function MaterialsPage() {
 
   const handleSubjectChange = (subjectId: string) => {
     setSelectedSubjectId(subjectId);
-    setShowSubjectSelect(false);
+  };
+
+  const openFilePicker = () => {
+    document.getElementById('file-upload')?.click();
   };
 
   const handleRetry = () => {
@@ -159,11 +161,7 @@ export function MaterialsPage() {
         subtitle="Your study document library, ready for AI-powered learning."
         action={
           hasSubjects && (
-            <Button
-              variant="outline"
-              onClick={() => setShowSubjectSelect(true)}
-              disabled={isUploading}
-            >
+            <Button variant="outline" onClick={openFilePicker} disabled={isUploading}>
               <Plus className="h-4 w-4" aria-hidden="true" />
               Add Material
             </Button>
@@ -189,11 +187,6 @@ export function MaterialsPage() {
               </option>
             ))}
           </select>
-          {showSubjectSelect && (
-            <Button variant="ghost" size="sm" onClick={() => setShowSubjectSelect(false)}>
-              <X className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          )}
         </div>
       )}
 

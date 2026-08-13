@@ -44,12 +44,13 @@ export function QuizzesPage() {
       setError(null);
       const data = await getMaterials();
       setMaterials(data);
-      if (data.length > 0) {
+      const usable = data.filter((m) => m.processing_status === 'processed');
+      if (usable.length > 0) {
         setSelectedMaterialId((current) => {
-          if (materialParam && data.some((m) => m.id === materialParam)) {
+          if (materialParam && usable.some((m) => m.id === materialParam)) {
             return materialParam;
           }
-          return current || data[0].id;
+          return current || usable[0].id;
         });
       }
     } catch (err) {
@@ -143,20 +144,37 @@ export function QuizzesPage() {
   };
 
   const handleSubmitQuiz = async () => {
+    if (!quiz) return;
+
+    // Compute the outcome directly from the answers. The derived
+    // `score`/`weakTopics` constants below still read the pre-submit
+    // state inside this handler, so they must not be used here.
+    const correctCount = quiz.reduce(
+      (acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0),
+      0
+    );
+    const weak = [
+      ...new Set(
+        quiz
+          .filter((q, i) => answers[i] !== q.correct_answer)
+          .map((q) => q.topic)
+      ),
+    ];
+
     setSubmitted(true);
     const material = materials.find((m) => m.id === selectedMaterialId) ?? null;
     const subjectId = material?.subject_id ?? null;
-    setQuizSession(score, quiz ? quiz.length : 0, weakTopics, subjectId);
-    setWeakTopics(weakTopics);
+    setQuizSession(correctCount, quiz.length, weak, subjectId);
+    setWeakTopics(weak);
 
-    if (!quiz || !material) return;
+    if (!material) return;
 
     // Persist the real attempt outcome (score derived from answers).
     try {
       await submitQuiz({
         material_id: material.id,
         total_questions: quiz.length,
-        correct_answers: score,
+        correct_answers: correctCount,
         topic_results: buildTopicResults(quiz, answers),
       });
       setSaveError(null);
@@ -189,6 +207,8 @@ export function QuizzesPage() {
       </>
     );
   }
+
+  const usableMaterials = materials.filter((m) => m.processing_status === 'processed');
 
   if (quiz && !submitted) {
     const currentQuestion = quiz[currentIndex];
@@ -359,7 +379,7 @@ export function QuizzesPage() {
         title="Quizzes"
         subtitle="Generate an AI quiz from your uploaded study material."
         action={
-          materials.length > 0 && (
+          usableMaterials.length > 0 && (
             <Button onClick={handleGenerate} disabled={isGenerating || !selectedMaterialId}>
               {isGenerating ? (
                 <>
@@ -405,6 +425,18 @@ export function QuizzesPage() {
             </Button>
           }
         />
+      ) : usableMaterials.length === 0 ? (
+        <EmptyState
+          icon={Loader2}
+          title="No processed study material yet."
+          description="Your uploaded materials are still being processed or failed to extract text. Try uploading a text-based PDF or TXT file."
+          action={
+            <Button to="/materials" variant="outline">
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Go to Materials
+            </Button>
+          }
+        />
       ) : (
         <Card className="mx-auto max-w-xl">
           <div className="space-y-5">
@@ -418,9 +450,9 @@ export function QuizzesPage() {
                 onChange={(e) => setSelectedMaterialId(e.target.value)}
                 className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
               >
-                {materials.map((material) => (
+                {usableMaterials.map((material) => (
                   <option key={material.id} value={material.id}>
-                    {material.original_filename} ({material.processing_status})
+                    {material.original_filename}
                   </option>
                 ))}
               </select>

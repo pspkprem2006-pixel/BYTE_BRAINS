@@ -40,12 +40,13 @@ export function TutorPage() {
       setError(null);
       const data = await getMaterials();
       setMaterials(data);
-      if (data.length > 0) {
+      const usable = data.filter((m) => m.processing_status === 'processed');
+      if (usable.length > 0) {
         setSelectedMaterialId((current) => {
-          if (materialParam && data.some((m) => m.id === materialParam)) {
+          if (materialParam && usable.some((m) => m.id === materialParam)) {
             return materialParam;
           }
-          return current || data[0].id;
+          return current || usable[0].id;
         });
       }
     } catch (err) {
@@ -127,13 +128,15 @@ export function TutorPage() {
     );
   }
 
+  const usableMaterials = materials.filter((m) => m.processing_status === 'processed');
+
   return (
     <>
       <PageHeader
         title="AI Tutor"
         subtitle="Chat with your personal study assistant — grounded in your materials."
         action={
-          materials.length > 0 && (
+          usableMaterials.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={selectedMaterialId}
@@ -141,9 +144,9 @@ export function TutorPage() {
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
                 disabled={isAsking}
               >
-                {materials.map((material) => (
+                {usableMaterials.map((material) => (
                   <option key={material.id} value={material.id}>
-                    {material.original_filename} ({material.processing_status})
+                    {material.original_filename}
                   </option>
                 ))}
               </select>
@@ -183,6 +186,18 @@ export function TutorPage() {
             <Button to="/materials" variant="outline">
               <FileText className="h-4 w-4" aria-hidden="true" />
               Upload Material
+            </Button>
+          }
+        />
+      ) : usableMaterials.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No processed study material yet."
+          description="Your uploaded materials are still being processed or failed to extract text. Try uploading a text-based PDF or TXT file."
+          action={
+            <Button to="/materials" variant="outline">
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Go to Materials
             </Button>
           }
         />

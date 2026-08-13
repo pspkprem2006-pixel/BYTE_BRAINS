@@ -205,7 +205,6 @@ export function SubjectsPage() {
       } else {
         alert(message);
       }
-      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -225,7 +224,6 @@ export function SubjectsPage() {
       } else {
         alert(message);
       }
-      throw err;
     } finally {
       setIsSubmitting(false);
     }

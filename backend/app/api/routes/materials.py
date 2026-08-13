@@ -45,8 +45,12 @@ async def upload_material(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
 
-    content = await file.read()
+    # Read only up to the size limit: anything larger is rejected before the
+    # whole payload is held in memory.
+    content = await file.read(material_service.MAX_FILE_SIZE + 1)
     file_size = len(content)
+    if file_size > material_service.MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10 MB limit.")
 
     try:
         material = material_service.create_material(
