@@ -87,6 +87,7 @@ export function StudyPlanPage() {
   }, []);
 
   const handleGenerate = async () => {
+    if (isGenerating) return;
     if (!selectedSubjectId) return;
     setIsGenerating(true);
     setError(null);
@@ -109,8 +110,6 @@ export function StudyPlanPage() {
   };
 
   const handleRegenerate = () => {
-    setPlan(null);
-    setStudyPlan(null);
     handleGenerate();
   };
 
@@ -130,7 +129,7 @@ export function StudyPlanPage() {
     <>
       <PageHeader
         title="Study Plan"
-        subtitle="Generate a personalized day-by-day plan from your material and quiz results."
+        subtitle="Generate a personalized day-by-day plan from your materials, saved web resources, and quiz results."
       />
 
       {error && (
@@ -149,7 +148,7 @@ export function StudyPlanPage() {
         </Card>
       )}
 
-      {subjects.length === 0 ? (
+      {!error && subjects.length === 0 ? (
         <EmptyState
           icon={Sparkles}
           title="No subjects yet"
@@ -289,7 +288,7 @@ export function StudyPlanPage() {
               Your plan —{' '}
               {subjects.find((s) => s.id === plan.subject_id)?.name ?? 'selected subject'}
             </h2>
-            <Button variant="outline" size="sm" onClick={handleRegenerate}>
+            <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={isGenerating}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               Regenerate Plan
             </Button>

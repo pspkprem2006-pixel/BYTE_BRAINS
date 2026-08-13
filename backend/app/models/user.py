@@ -37,3 +37,6 @@ class User(UUIDMixin, TimestampMixin, Base):
     study_plans: Mapped[list["StudyPlan"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    resource_selections: Mapped[list["LearningResourceSelection"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )

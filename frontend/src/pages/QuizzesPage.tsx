@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Sparkles,
   FileText,
+  Globe,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -19,15 +20,25 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { getMaterials } from '../services/materials';
 import { generateQuiz, submitQuiz } from '../services/quizzes';
+import { getSubjects } from '../services/subjects';
+import { getSelectedResources } from '../services/learningResources';
 import { setWeakTopics, setQuizSession } from '../store/weakTopics';
 import type { Material } from '../types/material';
+import type { Subject } from '../types/subject';
 import type { QuizQuestion, TopicResult } from '../types/quiz';
+
+type SourceMode = 'material' | 'subject';
 
 export function QuizzesPage() {
   const [searchParams] = useSearchParams();
   const materialParam = searchParams.get('material');
+  const subjectParam = searchParams.get('subject');
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [mode, setMode] = useState<SourceMode>(materialParam ? 'material' : 'subject');
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+  const [subjectResourceCount, setSubjectResourceCount] = useState(0);
   const [questionCount, setQuestionCount] = useState<number>(5);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -60,22 +71,65 @@ export function QuizzesPage() {
     }
   }, [materialParam]);
 
+  const loadSubjects = useCallback(async () => {
+    try {
+      const data = await getSubjects();
+      setSubjects(data);
+      if (data.length > 0) {
+        setSelectedSubjectId((current) => {
+          if (subjectParam && data.some((s) => s.id === subjectParam)) {
+            return subjectParam;
+          }
+          return current || data[0].id;
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load subjects');
+    }
+  }, [subjectParam]);
+
   useEffect(() => {
     loadMaterials();
-  }, [loadMaterials]);
+    loadSubjects();
+  }, [loadMaterials, loadSubjects]);
+
+  useEffect(() => {
+    if (!selectedSubjectId) return;
+    let cancelled = false;
+    getSelectedResources(selectedSubjectId)
+      .then((response) => {
+        if (!cancelled) setSubjectResourceCount(response.count);
+      })
+      .catch(() => {
+        if (!cancelled) setSubjectResourceCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSubjectId]);
 
   const handleGenerate = async () => {
-    if (!selectedMaterialId) {
+    if (mode === 'material' && !selectedMaterialId) {
       setError('Please select a study material before generating a quiz.');
+      return;
+    }
+    if (mode === 'subject' && !selectedSubjectId) {
+      setError('Please select a subject before generating a quiz.');
       return;
     }
     setIsGenerating(true);
     setError(null);
     try {
       const response = await generateQuiz({
-        material_id: selectedMaterialId,
         question_count: questionCount,
+        ...(mode === 'material'
+          ? { material_id: selectedMaterialId }
+          : { subject_id: selectedSubjectId }),
       });
+      if (response.questions.length === 0) {
+        setError('The quiz generator returned an empty quiz. Please try again.');
+        return;
+      }
       setQuiz(response.questions);
       setAnswers(Array(response.questions.length).fill(null));
       setCurrentIndex(0);
@@ -88,7 +142,9 @@ export function QuizzesPage() {
   };
 
   const handleRetry = () => {
+    setError(null);
     loadMaterials();
+    loadSubjects();
   };
 
   const handleTryAgain = () => {
@@ -163,16 +219,20 @@ export function QuizzesPage() {
 
     setSubmitted(true);
     const material = materials.find((m) => m.id === selectedMaterialId) ?? null;
-    const subjectId = material?.subject_id ?? null;
+    const subject = subjects.find((s) => s.id === selectedSubjectId) ?? null;
+    const subjectId =
+      mode === 'subject' ? subject?.id ?? null : material?.subject_id ?? null;
     setQuizSession(correctCount, quiz.length, weak, subjectId);
     setWeakTopics(weak);
 
-    if (!material) return;
-
-    // Persist the real attempt outcome (score derived from answers).
+    // Persist the real attempt outcome (score derived from answers). The
+    // request carries the material (when material mode) or the subject
+    // (when web-resource mode).
     try {
       await submitQuiz({
-        material_id: material.id,
+        ...(mode === 'material'
+          ? { material_id: material?.id }
+          : { subject_id: subject?.id }),
         total_questions: quiz.length,
         correct_answers: correctCount,
         topic_results: buildTopicResults(quiz, answers),
@@ -377,10 +437,11 @@ export function QuizzesPage() {
     <>
       <PageHeader
         title="Quizzes"
-        subtitle="Generate an AI quiz from your uploaded study material."
+        subtitle="Generate an AI quiz from your uploaded study material or saved web resources."
         action={
-          usableMaterials.length > 0 && (
-            <Button onClick={handleGenerate} disabled={isGenerating || !selectedMaterialId}>
+          (mode === 'material' && usableMaterials.length > 0) ||
+          (mode === 'subject' && subjects.length > 0) ? (
+            <Button onClick={handleGenerate} disabled={isGenerating || !selectedMaterialId && mode === 'material' || !selectedSubjectId && mode === 'subject'}>
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -393,7 +454,7 @@ export function QuizzesPage() {
                 </>
               )}
             </Button>
-          )
+          ) : undefined
         }
       />
 
@@ -413,7 +474,36 @@ export function QuizzesPage() {
         </Card>
       )}
 
-      {materials.length === 0 ? (
+      <div className="mb-6 flex justify-center">
+        <div className="flex rounded-xl border border-slate-300 bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode('material')}
+            disabled={isGenerating}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+              mode === 'material'
+                ? 'bg-indigo-600 text-white'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Material
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('subject')}
+            disabled={isGenerating}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+              mode === 'subject'
+                ? 'bg-indigo-600 text-white'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Web resources
+          </button>
+        </div>
+      </div>
+
+      {mode === 'material' && materials.length === 0 ? (
         <EmptyState
           icon={Sparkles}
           title="No study material yet."
@@ -425,7 +515,7 @@ export function QuizzesPage() {
             </Button>
           }
         />
-      ) : usableMaterials.length === 0 ? (
+      ) : mode === 'material' && usableMaterials.length === 0 ? (
         <EmptyState
           icon={Loader2}
           title="No processed study material yet."
@@ -437,28 +527,66 @@ export function QuizzesPage() {
             </Button>
           }
         />
+      ) : mode === 'subject' && subjects.length === 0 ? (
+        <EmptyState
+          icon={Globe}
+          title="No subjects yet."
+          description="Create a subject, save learning resources for it, and quizzes will be generated from those web resources."
+          action={
+            <Button to="/resources" variant="outline">
+              <Globe className="h-4 w-4" aria-hidden="true" />
+              Find Learning Resources
+            </Button>
+          }
+        />
       ) : (
         <Card className="mx-auto max-w-xl">
           <div className="space-y-5">
             <div>
-              <label htmlFor="quiz-material" className="block text-sm font-medium text-slate-700">
-                Study material
+              <label htmlFor="quiz-source" className="block text-sm font-medium text-slate-700">
+                {mode === 'material' ? 'Study material' : 'Subject'}
               </label>
-              <select
-                id="quiz-material"
-                value={selectedMaterialId}
-                onChange={(e) => setSelectedMaterialId(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
-              >
-                {usableMaterials.map((material) => (
-                  <option key={material.id} value={material.id}>
-                    {material.original_filename}
-                  </option>
-                ))}
-              </select>
-              {!selectedMaterialId && (
+              {mode === 'material' ? (
+                <select
+                  id="quiz-source"
+                  value={selectedMaterialId}
+                  onChange={(e) => setSelectedMaterialId(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
+                >
+                  {usableMaterials.map((material) => (
+                    <option key={material.id} value={material.id}>
+                      {material.original_filename}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  id="quiz-source"
+                  value={selectedSubjectId}
+                  onChange={(e) => setSelectedSubjectId(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
+                >
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {mode === 'subject' && subjectResourceCount === 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  No web resources saved for this subject yet — the quiz can only cover its
+                  uploaded materials.
+                </p>
+              )}
+              {mode === 'material' && !selectedMaterialId && (
                 <p className="mt-1 text-xs text-amber-600">
                   Select a study material above to enable quiz generation.
+                </p>
+              )}
+              {mode === 'subject' && !selectedSubjectId && (
+                <p className="mt-1 text-xs text-amber-600">
+                  Select a subject above to enable quiz generation.
                 </p>
               )}
             </div>
@@ -485,7 +613,10 @@ export function QuizzesPage() {
 
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !selectedMaterialId}
+              disabled={
+                isGenerating ||
+                (mode === 'material' ? !selectedMaterialId : !selectedSubjectId)
+              }
               className="w-full"
             >
               {isGenerating ? (

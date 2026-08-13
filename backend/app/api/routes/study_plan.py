@@ -9,8 +9,9 @@ from app.schemas.study_plan import (
     StudyPlanGenerateRequest,
     StudyPlanGenerateResponse,
 )
-from app.services import ai_service
+from app.services import ai_service, resource_selection_service
 from app.services.development_user import get_current_development_user
+from app.services.learning_context_service import LearningContextService
 
 router = APIRouter(prefix="/api/study-plan", tags=["study-plan"])
 
@@ -60,11 +61,21 @@ async def generate_study_plan(
                 combined, "key concepts summary"
             )
 
+    # Include the subject's selected web resources (metadata only).
+    web_resource_context, web_selections = LearningContextService().build_web_resource_context(
+        db,
+        user.id,
+        subject_id=subject.id,
+    )
+    if web_selections:
+        resource_selection_service.mark_selections_used(db, web_selections)
+
     try:
         plan = await ai_service.generate_study_plan(
             subject_id=subject.id,
             subject_name=subject.name,
             material_context=material_context,
+            web_resource_context=web_resource_context,
             days_available=request.days_available,
             hours_per_day=request.hours_per_day,
             focus=request.focus.value,

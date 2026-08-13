@@ -40,6 +40,45 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "google/gemini-2.5-flash"
 
+    # Brave Web Search settings.
+    # The key is used server-side only and must never reach frontend code.
+    # When it is missing the application still starts; web search calls then
+    # fail with a controlled "web search not configured" error.
+    brave_search_api_key: str = ""
+    web_search_enabled: bool = True
+    web_search_timeout_seconds: float = 10.0
+    web_search_max_results: int = 5
+
+    @field_validator("web_search_timeout_seconds")
+    @classmethod
+    def clamp_search_timeout(cls, value: float) -> float:
+        """Keep the provider timeout within safe bounds instead of crashing."""
+        return max(1.0, min(value, 30.0))
+
+    @field_validator("web_search_max_results")
+    @classmethod
+    def clamp_search_max_results(cls, value: int) -> int:
+        """Never allow more than 10 results per search request."""
+        return max(1, min(value, 10))
+
+    # Learning-resource discovery settings.
+    # Comma-separated list of domains whose results may be marked "official".
+    # Match is on the registrable domain only (www subdomains are handled).
+    # Keep this list small and maintainable; nothing is official unless it is
+    # listed here.
+    web_search_trusted_domains: str = "postgresql.org,python.org,nodejs.org"
+
+    # How many query variants the learning-resource discovery runs at most
+    # (e.g. "<topic>", "<topic> tutorial", "<topic> official documentation").
+    # Keeps search usage controlled per request.
+    web_search_learning_max_queries: int = 4
+
+    @field_validator("web_search_learning_max_queries")
+    @classmethod
+    def clamp_learning_max_queries(cls, value: int) -> int:
+        """Never run more than 5 query variants per discovery request."""
+        return max(1, min(value, 5))
+
     # Allowed CORS origins, comma-separated (e.g. the Vercel frontend URL).
     # Local development defaults to the Vite dev server.
     cors_origins: str = "http://localhost:5173"

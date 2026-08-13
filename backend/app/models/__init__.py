@@ -8,6 +8,7 @@ from app.core.database import Base
 from app.models.material import Material, ProcessingStatus
 from app.models.progress import UserProgress
 from app.models.quiz_attempt import QuizAttempt
+from app.models.resource_selection import LearningResourceSelection
 from app.models.study_plan import StudyPlan
 from app.models.study_task import StudyTask
 from app.models.subject import Subject
@@ -19,6 +20,7 @@ __all__ = [
     "Material",
     "ProcessingStatus",
     "QuizAttempt",
+    "LearningResourceSelection",
     "StudyPlan",
     "StudyTask",
     "Subject",

@@ -1,10 +1,11 @@
 export interface TutorAskRequest {
-  material_id: string;
+  material_id?: string;
+  subject_id?: string;
   question: string;
 }
 
 export interface TutorAskResponse {
-  material_id: string;
+  material_id?: string | null;
   question: string;
   answer: string;
 }

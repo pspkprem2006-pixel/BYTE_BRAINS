@@ -9,9 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
     health,
+    learning_resources,
     materials,
     progress,
     quizzes,
+    search,
     study_plan,
     subjects,
     topics,
@@ -47,6 +49,8 @@ app.include_router(tutor.router)
 app.include_router(quizzes.router)
 app.include_router(progress.router)
 app.include_router(study_plan.router)
+app.include_router(search.router)
+app.include_router(learning_resources.router)
 
 
 @app.get("/")

@@ -4,6 +4,7 @@ import { AppShell } from './components/layout/AppShell'
 import { DashboardPage } from './pages/DashboardPage'
 import { TutorPage } from './pages/TutorPage'
 import { SubjectsPage } from './pages/SubjectsPage'
+import { LearningResourcesPage } from './pages/LearningResourcesPage'
 import { MaterialsPage } from './pages/MaterialsPage'
 import { QuizzesPage } from './pages/QuizzesPage'
 import { StudyPlanPage } from './pages/StudyPlanPage'
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/tutor" element={<TutorPage />} />
         <Route path="/subjects" element={<SubjectsPage />} />
+        <Route path="/resources" element={<LearningResourcesPage />} />
         <Route path="/materials" element={<MaterialsPage />} />
         <Route path="/quizzes" element={<QuizzesPage />} />
         <Route path="/progress" element={<ProgressPage />} />

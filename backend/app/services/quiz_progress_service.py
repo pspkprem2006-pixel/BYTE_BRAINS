@@ -23,27 +23,53 @@ class MaterialNotFoundError(Exception):
     """Raised when the material is missing or owned by another user."""
 
 
+class SubjectNotFoundError(Exception):
+    """Raised when the subject is missing or owned by another user."""
+
+
 def _score_percent(correct: int, total: int) -> int:
     return round(correct / total * 100)
+
+
+def _resolve_subject_id(
+    db: Session, user: User, request: QuizSubmitRequest
+) -> tuple[uuid.UUID, str]:
+    """Resolve the attempt's subject and quiz title from the request.
+
+    The subject comes from the material when given, otherwise directly
+    from ``subject_id`` (web-resource quizzes).
+    """
+    if request.material_id is not None:
+        material = (
+            db.query(Material)
+            .filter(Material.id == request.material_id, Material.user_id == user.id)
+            .first()
+        )
+        if material is None:
+            raise MaterialNotFoundError
+        return material.subject_id, f"Quiz: {material.original_filename}"
+
+    subject = (
+        db.query(Subject)
+        .filter(Subject.id == request.subject_id, Subject.owner_id == user.id)
+        .first()
+    )
+    if subject is None:
+        raise SubjectNotFoundError
+    return subject.id, f"Quiz: {subject.name} (web resources)"
 
 
 def submit_quiz_attempt(
     db: Session, user: User, request: QuizSubmitRequest
 ) -> QuizAttempt:
     """Create a quiz attempt row and upsert per-topic mastery."""
-    material = (
-        db.query(Material)
-        .filter(Material.id == request.material_id, Material.user_id == user.id)
-        .first()
-    )
-    if material is None:
-        raise MaterialNotFoundError
+    subject_id, quiz_title = _resolve_subject_id(db, user, request)
 
     now = datetime.now(timezone.utc)
     attempt = QuizAttempt(
         user_id=user.id,
-        subject_id=material.subject_id,
-        quiz_title=f"Quiz: {material.original_filename}",
+        subject_id=subject_id,
+        quiz_title=quiz_title,
         total_questions=request.total_questions,
         correct_answers=request.correct_answers,
         score=_score_percent(request.correct_answers, request.total_questions),
@@ -55,13 +81,13 @@ def submit_quiz_attempt(
         topic = (
             db.query(Topic)
             .filter(
-                Topic.subject_id == material.subject_id,
+                Topic.subject_id == subject_id,
                 Topic.name == result.topic,
             )
             .first()
         )
         if topic is None:
-            topic = Topic(subject_id=material.subject_id, name=result.topic)
+            topic = Topic(subject_id=subject_id, name=result.topic)
             db.add(topic)
             db.flush()
 

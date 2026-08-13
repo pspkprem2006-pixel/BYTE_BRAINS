@@ -35,3 +35,6 @@ class Subject(UUIDMixin, TimestampMixin, Base):
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(
         back_populates="subject"
     )
+    resource_selections: Mapped[list["LearningResourceSelection"]] = relationship(
+        back_populates="subject", passive_deletes=True
+    )

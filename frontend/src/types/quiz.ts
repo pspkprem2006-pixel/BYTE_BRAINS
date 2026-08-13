@@ -7,12 +7,14 @@ export interface QuizQuestion {
 }
 
 export interface QuizGenerateRequest {
-  material_id: string;
+  material_id?: string;
+  subject_id?: string;
   question_count: number;
 }
 
 export interface QuizGenerateResponse {
-  material_id: string;
+  material_id?: string | null;
+  subject_id?: string | null;
   questions: QuizQuestion[];
   question_count: number;
 }
@@ -24,7 +26,8 @@ export interface TopicResult {
 }
 
 export interface QuizSubmitRequest {
-  material_id: string;
+  material_id?: string;
+  subject_id?: string;
   total_questions: number;
   correct_answers: number;
   topic_results: TopicResult[];

@@ -18,16 +18,28 @@ class QuizQuestion(BaseModel):
 
 
 class QuizGenerateRequest(BaseModel):
-    """Request to generate a quiz from material."""
+    """Request to generate a quiz.
 
-    material_id: uuid.UUID
+    Either ``material_id`` (uploaded material) or ``subject_id`` (selected
+    web resources for a subject) — or both — must be provided.
+    """
+
+    material_id: uuid.UUID | None = None
+    subject_id: uuid.UUID | None = None
     question_count: int = Field(ge=5, le=10)
+
+    @model_validator(mode="after")
+    def _at_least_one_source(self) -> "QuizGenerateRequest":
+        if self.material_id is None and self.subject_id is None:
+            raise ValueError("material_id or subject_id is required")
+        return self
 
 
 class QuizGenerateResponse(BaseModel):
     """Response containing generated quiz questions."""
 
-    material_id: uuid.UUID
+    material_id: uuid.UUID | None = None
+    subject_id: uuid.UUID | None = None
     questions: List[QuizQuestion]
     question_count: int
 
@@ -51,12 +63,22 @@ class QuizSubmitRequest(BaseModel):
 
     The score percentage is derived server-side from correct_answers and
     total_questions so the stored value always matches the answers.
+
+    Either ``material_id`` or ``subject_id`` must be provided; the subject
+    is resolved from the material when only the material is given.
     """
 
-    material_id: uuid.UUID
+    material_id: uuid.UUID | None = None
+    subject_id: uuid.UUID | None = None
     total_questions: int = Field(ge=1)
     correct_answers: int = Field(ge=0)
     topic_results: List[TopicResult] = []
+
+    @model_validator(mode="after")
+    def _at_least_one_source(self) -> "QuizSubmitRequest":
+        if self.material_id is None and self.subject_id is None:
+            raise ValueError("material_id or subject_id is required")
+        return self
 
     @model_validator(mode="after")
     def _answers_must_fit_quiz(self) -> "QuizSubmitRequest":

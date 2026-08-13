@@ -9,7 +9,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       # Render's connection string uses the postgres:// scheme; the app
@@ -22,6 +22,8 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
+        sync: false
+      - key: BRAVE_SEARCH_API_KEY
         sync: false
       - key: CORS_ORIGINS
         sync: false
